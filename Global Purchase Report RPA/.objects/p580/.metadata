@@ -1,0 +1,12 @@
+﻿{
+  "Id": "p580Ye911kq9Ilkrl_vzGA",
+  "Reference": "gZXR734txESI5U3Knb0mjA/p580Ye911kq9Ilkrl_vzGA",
+  "Name": "Chrome: Login(3)",
+  "Type": "App",
+  "Created": "2025-10-03T03:49:06.6651469Z",
+  "CreatedBy": [
+    "UiPath.UIAutomationCore, Version=21.10.3.0, Culture=neutral, PublicKeyToken=null",
+    "UiPath.Platform, Version=21.10.0.0, Culture=neutral, PublicKeyToken=null"
+  ],
+  "Updated": "2025-10-03T03:49:06.6651469Z"
+}

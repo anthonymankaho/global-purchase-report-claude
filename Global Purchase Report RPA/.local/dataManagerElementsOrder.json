@@ -1,0 +1,70 @@
+{
+  "Workflows": [
+    {
+      "Path": null,
+      "SortBy": 0,
+      "VariablesSectionElementsOrder": [],
+      "ArgumentsSectionElementsOrder": null,
+      "ConstantsSectionElementsOrder": [],
+      "AddedNamespaces": null
+    },
+    {
+      "Path": "Main.xaml",
+      "SortBy": 0,
+      "VariablesSectionElementsOrder": [],
+      "ArgumentsSectionElementsOrder": [],
+      "ConstantsSectionElementsOrder": [],
+      "AddedNamespaces": null
+    },
+    {
+      "Path": "MMS data output RPA/GlobalHandlerX.xaml",
+      "SortBy": 0,
+      "VariablesSectionElementsOrder": [
+        "ErrorTemplate&Flowchart_1",
+        "SkipIterationFlag&Flowchart_1",
+        "CustomInputContentPath&Flowchart_1",
+        "UserAction&Flowchart_1",
+        "SkipIterationFlagText&Flowchart_1",
+        "ErrorTemplateBackup&Flowchart_1",
+        "cEmptyString&Flowchart_1",
+        "LocalizationData&Sequence_56",
+        "UICulture&Sequence_56",
+        "ActionType&Sequence_49",
+        "placeholderActionType&Sequence_49",
+        "ActivityName&Sequence_49",
+        "ActivityType&Sequence_49",
+        "ProblemDescription&Sequence_49",
+        "placeholderActivityType&Sequence_49",
+        "ProblemDescriptionPlaceholder&Sequence_49",
+        "activityEncodedIdPlaceHolder&Sequence_49",
+        "activityEncodedId&Sequence_49",
+        "placeholderActivityName&Sequence_49",
+        "FoundRepetitiveActivity&Sequence_49",
+        "placeholderSkipIteration&Sequence_49",
+        "cDisplayNone&Sequence_49"
+      ],
+      "ArgumentsSectionElementsOrder": [
+        "errorInfo",
+        "result"
+      ],
+      "ConstantsSectionElementsOrder": null,
+      "AddedNamespaces": null
+    },
+    {
+      "Path": "MMS data output RPA/Main.xaml",
+      "SortBy": 0,
+      "VariablesSectionElementsOrder": null,
+      "ArgumentsSectionElementsOrder": null,
+      "ConstantsSectionElementsOrder": null,
+      "AddedNamespaces": null
+    },
+    {
+      "Path": "GlobalHandlerX.xaml",
+      "SortBy": 0,
+      "VariablesSectionElementsOrder": null,
+      "ArgumentsSectionElementsOrder": null,
+      "ConstantsSectionElementsOrder": null,
+      "AddedNamespaces": null
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+﻿{
+  "Id": "xtcpKqrqkEaKLB_QKve57g",
+  "Reference": "gZXR734txESI5U3Knb0mjA/xtcpKqrqkEaKLB_QKve57g",
+  "ParentRef": "gZXR734txESI5U3Knb0mjA/ZdejN3l2nECKT9CaTy4o_Q",
+  "Name": "Chrome: Reports - MEYER EPICOR",
+  "Type": "Screen",
+  "Created": "2025-10-03T03:30:15.2490016Z",
+  "CreatedBy": [
+    "UiPath.UIAutomationCore, Version=21.10.3.0, Culture=neutral, PublicKeyToken=null",
+    "UiPath.Platform, Version=21.10.0.0, Culture=neutral, PublicKeyToken=null"
+  ],
+  "Updated": "2025-10-03T03:30:15.2490016Z"
+}

@@ -1,0 +1,13 @@
+﻿{
+  "Id": "YxDMQ823oEa-L_pHjEXrQQ",
+  "Reference": "gZXR734txESI5U3Knb0mjA/YxDMQ823oEa-L_pHjEXrQQ",
+  "ParentRef": "gZXR734txESI5U3Knb0mjA/duDv6K56l06PIQ6AYYLAbg",
+  "Name": "Chrome: Login",
+  "Type": "Screen",
+  "Created": "2025-10-03T03:49:06.6808394Z",
+  "CreatedBy": [
+    "UiPath.UIAutomationCore, Version=21.10.3.0, Culture=neutral, PublicKeyToken=null",
+    "UiPath.Platform, Version=21.10.0.0, Culture=neutral, PublicKeyToken=null"
+  ],
+  "Updated": "2025-10-03T03:49:06.6808394Z"
+}

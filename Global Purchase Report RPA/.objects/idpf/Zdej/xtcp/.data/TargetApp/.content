@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-16"?>
+<TargetApp Area="0, 0, 0, 0" BrowserType="Chrome" ContentHash="Bd1fsOmxw0ub5Ky8AeVRfA" Selector="&lt;html app='chrome.exe' title='Reports - MEYER EPICOR'/&gt;" Url="https://portal.meyer-msc.com/EPICOR-SUB/Report" xmlns="http://schemas.uipath.com/workflow/activities/uix">
+  <imageRef attrName="IconBase64" xmlns="">00Ub177tli0SCjprBvW9erw</imageRef>
+  <imageRef attrName="InformativeScreenshot" originalValue="8454ec5f9be79c645edb634ac3419e03.png" xmlns="">0ZlutuDmeykOs-ut20dnD4w</imageRef>
+</TargetApp>

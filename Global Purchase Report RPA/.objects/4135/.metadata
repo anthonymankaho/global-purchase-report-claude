@@ -1,0 +1,12 @@
+﻿{
+  "Id": "4135QdM9Akuj2HaoJsmtMw",
+  "Reference": "gZXR734txESI5U3Knb0mjA/4135QdM9Akuj2HaoJsmtMw",
+  "Name": "Chrome: Login(4)",
+  "Type": "App",
+  "Created": "2025-10-03T03:52:43.5644008Z",
+  "CreatedBy": [
+    "UiPath.UIAutomationCore, Version=21.10.3.0, Culture=neutral, PublicKeyToken=null",
+    "UiPath.Platform, Version=21.10.0.0, Culture=neutral, PublicKeyToken=null"
+  ],
+  "Updated": "2025-10-03T03:52:43.5644008Z"
+}

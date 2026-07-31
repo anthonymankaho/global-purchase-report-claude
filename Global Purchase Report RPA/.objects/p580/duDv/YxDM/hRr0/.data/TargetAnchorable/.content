@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-16"?>
+<TargetAnchorable BrowserURL="https://portal.meyer-msc.com/EPICOR-SUB/Report/List?reportKey=ACT001" ContentHash="ChNKlmSU50OjrxjnN7colg" DesignTimeRectangle="718, 425, 106, 33" ElementType="InputBox" FriendlyName="'INPUT dp1759463294720'" FullSelectorArgument="&lt;webctrl id='dp1759463294720' tag='INPUT' /&gt;" FuzzySelectorArgument="&lt;webctrl id='dp1759463294720' tag='INPUT' type='text' aaname='' /&gt;" Guid="65d596b6-4933-4eed-a2c9-d8df912374ed" ScopeSelectorArgument="&lt;html app='chrome.exe' title='ACT001 - MEYER EPICOR' /&gt;" SearchSteps="FuzzySelector, Image" xmlns="http://schemas.uipath.com/workflow/activities/uix" xmlns:scg="clr-namespace:System.Collections.Generic;assembly=System.Private.CoreLib" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <TargetAnchorable.Anchors>
+    <scg:List x:TypeArguments="ITarget" Capacity="4">
+      <Target DesignTimeRectangle="570, 425, 106, 33" ElementType="InputBox" FriendlyName="'INPUT EPICOR_SUB_Report…'" FullSelectorArgument="&lt;webctrl id='EPICOR_SUB_Report_ReportGrid0_QuickFilter_TranDate' tag='INPUT' /&gt;" FuzzySelectorArgument="&lt;webctrl id='EPICOR_SUB_Report_ReportGrid0_QuickFilter_TranDate' tag='INPUT' type='text' aaname='' /&gt;" SearchSteps="FuzzySelector, Image">
+        <imageRef attrName="ImageBase64" xmlns="">1lydhViT_V0ms71y-qp9W5A</imageRef>
+      </Target>
+    </scg:List>
+  </TargetAnchorable.Anchors>
+  <imageRef attrName="ImageBase64" xmlns="">0ymjYpExykkC8IZIYD4YvdA</imageRef>
+  <imageRef attrName="InformativeScreenshot" originalValue="f561d5e2fa3db8b8861ba6e9dce6793d.png" xmlns="">0YiqGKakZgEaD2Rd9K1TMGA</imageRef>
+</TargetAnchorable>

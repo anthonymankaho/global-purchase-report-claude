@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-16"?>
+<TargetApp Area="0, 0, 0, 0" BrowserType="Chrome" ContentHash="P27tOihIHUWZXQt3UQolRg" Selector="&lt;html app='chrome.exe' title='Login'/&gt;" Url="https://portal.meyer-msc.com/EPICOR-SUB/Account/Login?ReturnUrl=%2fEPICOR-SUB%2f" xmlns="http://schemas.uipath.com/workflow/activities/uix">
+  <imageRef attrName="IconBase64" xmlns="">0_vtloc6qc0-Imef2uWeSdQ</imageRef>
+  <imageRef attrName="InformativeScreenshot" originalValue="55116adc18ba934a62e1198cb4aa01e5.png" xmlns="">0DbKrT4y_tUGL5uvPKg4JHg</imageRef>
+</TargetApp>

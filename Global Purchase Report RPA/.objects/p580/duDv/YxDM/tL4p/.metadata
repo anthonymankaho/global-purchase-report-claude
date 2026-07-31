@@ -1,0 +1,14 @@
+﻿{
+  "Id": "tL4pM3IoVkqe_y1WNxiceQ",
+  "Reference": "gZXR734txESI5U3Knb0mjA/tL4pM3IoVkqe_y1WNxiceQ",
+  "ParentRef": "gZXR734txESI5U3Knb0mjA/YxDMQ823oEa-L_pHjEXrQQ",
+  "Name": "INPUT EPICOR_SUB_Report…",
+  "Type": "Element",
+  "TaxonomyType": "Input",
+  "Created": "2025-10-03T03:49:39.4227658Z",
+  "CreatedBy": [
+    "UiPath.UIAutomationCore, Version=21.10.3.0, Culture=neutral, PublicKeyToken=null",
+    "UiPath.Platform, Version=21.10.0.0, Culture=neutral, PublicKeyToken=null"
+  ],
+  "Updated": "2025-10-03T03:49:39.4227658Z"
+}

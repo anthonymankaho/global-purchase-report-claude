@@ -1,0 +1,55 @@
+{
+  "Workflows": [
+    {
+      "Path": null,
+      "SortBy": 0,
+      "VariablesSectionElementsOrder": [],
+      "ArgumentsSectionElementsOrder": null,
+      "ConstantsSectionElementsOrder": [],
+      "AddedNamespaces": null
+    },
+    {
+      "Path": "Main.xaml",
+      "SortBy": 0,
+      "VariablesSectionElementsOrder": [
+        "file&SequenceX_1",
+        "A_LASTROW&SequenceX_1",
+        "A_MFIRST_ROW&SequenceX_1",
+        "A_MLAST_ROW&SequenceX_1",
+        "B_LASTROW&SequenceX_1",
+        "B_MFIRST_ROW&SequenceX_1",
+        "B_MLAST_ROW&SequenceX_1",
+        "C_LASTROW&SequenceX_1",
+        "C_MFIRST_ROW&SequenceX_1",
+        "C_MLAST_ROW&SequenceX_1",
+        "D_LASTROW&SequenceX_1",
+        "D_MFIRST_ROW&SequenceX_1",
+        "D_MLAST_ROW&SequenceX_1",
+        "E_LASTROW&SequenceX_1",
+        "E_MFIRST_ROW&SequenceX_1",
+        "E_MLAST_ROW&SequenceX_1",
+        "F_LASTROW&SequenceX_1",
+        "F_MLAST_ROW&SequenceX_1",
+        "F_MFIRST_ROW&SequenceX_1",
+        "M_LASTROW&SequenceX_1",
+        "RIV_MFIRST_ROW&SequenceX_1",
+        "M_MLAST_ROW&SequenceX_1",
+        "RIV_LASTROW&SequenceX_1",
+        "RIV_MLAST_ROW&SequenceX_1",
+        "M_MFIRST_ROW&SequenceX_1",
+        "S_LASTROW&SequenceX_1",
+        "S_MFIRST_ROW&SequenceX_1",
+        "S_MLAST_ROW&SequenceX_1",
+        "T_LASTROW&SequenceX_1",
+        "T_MFIRST_ROW&SequenceX_1",
+        "W_MLAST_ROW&SequenceX_1",
+        "W_LASTROW&SequenceX_1",
+        "W_MFIRST_ROW&SequenceX_1",
+        "T_MLAST_ROW&SequenceX_1"
+      ],
+      "ArgumentsSectionElementsOrder": [],
+      "ConstantsSectionElementsOrder": [],
+      "AddedNamespaces": null
+    }
+  ]
+}

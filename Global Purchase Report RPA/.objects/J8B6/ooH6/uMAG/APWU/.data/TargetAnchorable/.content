@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-16"?>
+<TargetAnchorable BrowserURL="https://portal.meyer-msc.com/EPICOR-SUB/Account/Login?ReturnUrl=%2fEPICOR-SUB%2f" ContentHash="d3Vic4IZSkWq2jaU1EzXYA" DesignTimeRectangle="1071, 467, 334, 52" ElementType="InputBox" FriendlyName="'INPUT EPICOR_SUB_Member…'" FullSelectorArgument="&lt;webctrl tag='INPUT' /&gt;" FuzzySelectorArgument="&lt;webctrl tag='INPUT' type='text' aaname='*Username' /&gt;" Guid="44ea5041-febe-4b6c-b87c-d4b6345cb074" ScopeSelectorArgument="&lt;html app='chrome.exe' title='Login' /&gt;" SearchSteps="FuzzySelector, Image" xmlns="http://schemas.uipath.com/workflow/activities/uix">
+  <imageRef attrName="ImageBase64" xmlns="">0tfaTF_HYTkmzIhTOVlZe_Q</imageRef>
+  <imageRef attrName="InformativeScreenshot" originalValue="66555aadcd648fd3ff004f6119d147e6.png" xmlns="">0-quM4px_uEGy3eYjZBQFEg</imageRef>
+</TargetAnchorable>

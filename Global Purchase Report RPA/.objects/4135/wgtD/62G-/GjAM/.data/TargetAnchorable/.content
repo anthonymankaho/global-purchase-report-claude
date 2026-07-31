@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-16"?>
+<TargetAnchorable BrowserURL="https://portal.meyer-msc.com/EPICOR-SUB/Report/List?reportKey=ACT001" ContentHash="CqyOtx7GbUClEdv5nN3axA" DesignTimeRectangle="743, 338, 78, 31" ElementType="Text" FriendlyName="'Export'" FullSelectorArgument="&lt;webctrl aaname='Export' parentid='GridDiv' tag='SPAN' /&gt;" FuzzySelectorArgument="&lt;webctrl aaname='Export' parentid='GridDiv' tag='SPAN' type='' check:text='Export' /&gt;" Guid="4b7e13b3-edfb-46ee-9b9e-b8dca2084ad7" ScopeSelectorArgument="&lt;html app='chrome.exe' title='ACT001 - MEYER EPICOR' /&gt;" SearchSteps="FuzzySelector, Image" xmlns="http://schemas.uipath.com/workflow/activities/uix" xmlns:scg="clr-namespace:System.Collections.Generic;assembly=System.Private.CoreLib" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <TargetAnchorable.Anchors>
+    <scg:List x:TypeArguments="ITarget" Capacity="4">
+      <Target DesignTimeRectangle="690, 337, 30, 32" FriendlyName="'DIV'" FullSelectorArgument="&lt;webctrl css-selector='body&amp;gt;div&amp;gt;div&amp;gt;section&amp;gt;div&amp;gt;div&amp;gt;div&amp;gt;div&amp;gt;div&amp;gt;div&amp;gt;div' idx='2' parentid='GridDiv' tag='DIV' /&gt;" FuzzySelectorArgument="&lt;webctrl type='' aaname='' parentid='GridDiv' tag='DIV' /&gt;" SearchSteps="FuzzySelector, Image">
+        <imageRef attrName="ImageBase64" xmlns="">1PpbGJbUvYk-Sr32avGQiLA</imageRef>
+      </Target>
+    </scg:List>
+  </TargetAnchorable.Anchors>
+  <imageRef attrName="ImageBase64" xmlns="">0ybxtfYMJ40yMktf1cKU0-g</imageRef>
+  <imageRef attrName="InformativeScreenshot" originalValue="ef25323c3c4a63749d1b54afd32effd8.png" xmlns="">0sj3MPLAP-Uu_RvN25kVT0g</imageRef>
+</TargetAnchorable>

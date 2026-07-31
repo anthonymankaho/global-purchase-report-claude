@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-16"?>
+<TargetAnchorable BrowserURL="https://portal.meyer-msc.com/EPICOR-SUB/#!1" ContentHash="uyw-wJZ8UEWrKJRwOkHD9w" DesignTimeRectangle="60, 815, 55, 24" ElementType="Text" FriendlyName="'Report'" FullSelectorArgument="&lt;webctrl aaname='Report' parentid='SidebarMenu' tag='SPAN' /&gt;" FuzzySelectorArgument="&lt;webctrl aaname='Report' parentid='SidebarMenu' tag='SPAN' type='' check:text='Report' /&gt;" Guid="4580eb3e-3e9f-4466-8549-1585080af07f" ScopeSelectorArgument="&lt;html app='chrome.exe' title='Dashboard - MEYER EPICOR' /&gt;" SearchSteps="FuzzySelector, Image" xmlns="http://schemas.uipath.com/workflow/activities/uix" xmlns:scg="clr-namespace:System.Collections.Generic;assembly=System.Private.CoreLib" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <TargetAnchorable.Anchors>
+    <scg:List x:TypeArguments="ITarget" Capacity="4">
+      <Target DesignTimeRectangle="9, 800, 288, 55" ElementType="Text" FriendlyName="'Report'" FullSelectorArgument="&lt;webctrl aaname='                  Report     ' parentid='SidebarMenu' tag='A' /&gt;" FuzzySelectorArgument="&lt;webctrl aaname='                  Report     ' parentid='SidebarMenu' tag='A' type='' check:text='Report' /&gt;" SearchSteps="FuzzySelector, Image">
+        <imageRef attrName="ImageBase64" xmlns="">1knUGB_VmpEaaOVlKZ6jyvg</imageRef>
+      </Target>
+    </scg:List>
+  </TargetAnchorable.Anchors>
+  <imageRef attrName="ImageBase64" xmlns="">0FhqpFsVCcUmtL2J1_01nDw</imageRef>
+  <imageRef attrName="InformativeScreenshot" originalValue="86cdbdbd0b9774cfa67a353259862cfc.png" xmlns="">0B2aoSUuKP0OXUjJOJfKnDQ</imageRef>
+</TargetAnchorable>

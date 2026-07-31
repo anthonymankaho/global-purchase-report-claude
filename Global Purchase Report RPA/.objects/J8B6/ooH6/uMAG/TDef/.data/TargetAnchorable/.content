@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-16"?>
+<TargetAnchorable BrowserURL="https://portal.meyer-msc.com/EPICOR-SUB/Account/Login?ReturnUrl=%2fEPICOR-SUB%2f" ContentHash="vLGcipgtPUSsOj7mXr7YSw" DesignTimeRectangle="1067, 637, 181, 41" ElementType="Button" FriendlyName="'Sign In'" FullSelectorArgument="&lt;webctrl tag='BUTTON' /&gt;" FuzzySelectorArgument="&lt;webctrl tag='BUTTON' type='submit' aaname='                     Sign In                 ' check:text='Sign In' /&gt;" Guid="c09cdf83-c76a-4f10-8e83-6babb22a12d2" ScopeSelectorArgument="&lt;html app='chrome.exe' title='Login' /&gt;" SearchSteps="FuzzySelector, Image" xmlns="http://schemas.uipath.com/workflow/activities/uix">
+  <imageRef attrName="ImageBase64" xmlns="">0uptvDmgNdU2k1Fuh1W-2eA</imageRef>
+  <imageRef attrName="InformativeScreenshot" originalValue="538496495e97996b9e0b282663244ae3.png" xmlns="">0-nzquJDUdEmtn7VI3727sg</imageRef>
+</TargetAnchorable>

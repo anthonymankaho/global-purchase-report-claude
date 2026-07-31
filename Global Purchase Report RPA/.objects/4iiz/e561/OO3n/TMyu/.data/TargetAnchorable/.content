@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-16"?>
+<TargetAnchorable BrowserURL="https://portal.meyer-msc.com/EPICOR-SUB/#!1" ContentHash="IXhzjWlA5EKrftYS8aa9Ig" DesignTimeRectangle="9, 865, 288, 55" ElementType="Text" FriendlyName="'Report'" FullSelectorArgument="&lt;webctrl aaname='                  Report     ' parentid='SidebarMenu' tag='A' /&gt;" FuzzySelectorArgument="&lt;webctrl aaname='                  Report     ' parentid='SidebarMenu' tag='A' type='' check:text='Report' /&gt;" Guid="c3fc23e2-da64-4d63-b49a-1c158e7049ec" ScopeSelectorArgument="&lt;html app='chrome.exe' title='Dashboard - MEYER EPICOR' /&gt;" SearchSteps="FuzzySelector, Image" xmlns="http://schemas.uipath.com/workflow/activities/uix">
+  <imageRef attrName="ImageBase64" xmlns="">0BZGFtUiDA0SjAg-gWnQdKg</imageRef>
+  <imageRef attrName="InformativeScreenshot" originalValue="3c81e32d44fc6a23cd1aa3c9d8552ca6.png" xmlns="">0J0JFtnRGW0G4TFvnplyJIA</imageRef>
+</TargetAnchorable>

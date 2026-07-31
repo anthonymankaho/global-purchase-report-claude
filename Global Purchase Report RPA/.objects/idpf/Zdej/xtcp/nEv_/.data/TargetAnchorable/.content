@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-16"?>
+<TargetAnchorable BrowserURL="https://portal.meyer-msc.com/EPICOR-SUB/Report" ContentHash="dPz7edDlQU6cot5N17EfCQ" DesignTimeRectangle="359, 511, 271, 20" ElementType="Text" FriendlyName="'ACT001 -'" FullSelectorArgument="&lt;webctrl aaname='                     ACT001 - Material Receipt Report           *' parentid='ReportPage' tag='A' /&gt;" FuzzySelectorArgument="&lt;webctrl aaname='                     ACT001 - Material Receipt Report           *' parentid='ReportPage' tag='A' type='' check:text='ACT001 - Material Receipt Report' /&gt;" Guid="c9fe4f81-4083-4334-b1fc-20ae327a6edd" ScopeSelectorArgument="&lt;html app='chrome.exe' title='Reports - MEYER EPICOR' /&gt;" SearchSteps="FuzzySelector, Image" xmlns="http://schemas.uipath.com/workflow/activities/uix">
+  <imageRef attrName="ImageBase64" xmlns="">0bmLP3v0JUE6PzmLV_9M34w</imageRef>
+  <imageRef attrName="InformativeScreenshot" originalValue="97ab4dd1bb794c3b9a1ee74691ee3ee0.png" xmlns="">0mBew3-8qFU6JbxxS0irK5Q</imageRef>
+</TargetAnchorable>
