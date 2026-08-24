@@ -185,12 +185,13 @@ const filteredSheetsHtml = {};
 // =========================================================================
 const PIVOT_HEADER = ['ITEM_CODE', 'Std Part Desc', 'Max Vendor', 'Max_PO_Price(USD)', 'Min Vendor', 'Min_PO_Price(USD)', 'DB', 'Vendor', 'Avg PO Price(USD)', 'Tot PO Price(USD)'];
 
-function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthValues, stdCommValues, vendorValues, header) {
+function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthValues, stdCommValues, vendorValues, itemCodeValues, header) {
   const chartRowsJsonStr = neutralize(JSON.stringify(itemRows));
   const dbValuesJsonStr = neutralize(JSON.stringify(dbValues));
   const monthValuesJsonStr = neutralize(JSON.stringify(monthValues));
   const stdCommValuesJsonStr = neutralize(JSON.stringify(stdCommValues));
   const vendorValuesJsonStr = neutralize(JSON.stringify(vendorValues));
+  const itemCodeValuesJsonStr = neutralize(JSON.stringify(itemCodeValues));
   const headerJsonStr = neutralize(JSON.stringify(header));
 
   return `<!doctype html>
@@ -260,6 +261,7 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
   <div><label class="fl">DB (Entity)</label><div class="ms" id="ms-db"></div></div>
   <div><label class="fl">Std Comm</label><div class="ms" id="ms-stdcomm"></div></div>
   <div><label class="fl">Std Vendor Name</label><div class="ms" id="ms-vendor"></div></div>
+  <div><label class="fl">Item Code</label><div class="ms" id="ms-itemcode"></div></div>
   <div style="align-self:flex-end"><button id="resetBtn">Reset filters</button></div>
 </div>
 <div class="charts">
@@ -283,6 +285,7 @@ var DB_VALUES = ${dbValuesJsonStr};
 var MONTH_VALUES = ${monthValuesJsonStr};
 var STDCOMM_VALUES = ${stdCommValuesJsonStr};
 var VENDOR_VALUES = ${vendorValuesJsonStr};
+var ITEMCODE_VALUES = ${itemCodeValuesJsonStr};
 var HEADER = ${headerJsonStr};
 var DB_COLORS = ['#005daa', '#c0392b', '#27ae60', '#e67e22', '#8e44ad', '#16a085', '#d35400', '#7f8c8d'];
 
@@ -435,6 +438,7 @@ var msMonth = createMultiSelect('ms-month', MONTH_VALUES, function () { renderCh
 var msDb = createMultiSelect('ms-db', DB_VALUES, function () { renderCharts(); });
 var msStdComm = createMultiSelect('ms-stdcomm', STDCOMM_VALUES, function () { renderCharts(); });
 var msVendor = createMultiSelect('ms-vendor', VENDOR_VALUES, function () { renderCharts(); });
+var msItemCode = createMultiSelect('ms-itemcode', ITEMCODE_VALUES, function () { renderCharts(); });
 
 var charts = {};
 function renderCharts() {
@@ -443,8 +447,9 @@ function renderCharts() {
   var selDb = msDb.getSelected();
   var selStdComm = msStdComm.getSelected();
   var selVendor = msVendor.getSelected();
+  var selItemCode = msItemCode.getSelected();
   var rows = CHART_ROWS.filter(function (r) {
-    return matchesFilter(r[1], selMonth) && matchesFilter(r[0], selDb) && matchesFilter(r[8], selStdComm) && matchesFilter(r[5], selVendor);
+    return matchesFilter(r[1], selMonth) && matchesFilter(r[0], selDb) && matchesFilter(r[8], selStdComm) && matchesFilter(r[5], selVendor) && matchesFilter(String(r[3]), selItemCode);
   });
 
   // Chart 1: By Month (GLID) - Total line + shadow bars per DB
@@ -557,7 +562,7 @@ var dataTable = $('#dataTable').DataTable({
 renderCharts();
 
 document.getElementById('resetBtn').onclick = function () {
-  msMonth.reset(); msDb.reset(); msStdComm.reset(); msVendor.reset();
+  msMonth.reset(); msDb.reset(); msStdComm.reset(); msVendor.reset(); msItemCode.reset();
   renderCharts();
 };
 
@@ -604,7 +609,11 @@ for (const f of FILTER_SHEETS) {
   const monthValues = Array.from(new Set(itemRows.map(r => r[1]))).filter(Boolean).sort();
   const stdCommValues = Array.from(new Set(itemRows.map(r => r[8]))).filter(Boolean).sort();
   const vendorValues = Array.from(new Set(itemRows.map(r => r[5]))).filter(Boolean).sort();
-  filteredSheetsHtml[f.name] = buildPivotPageHtml(f.name, f.stdComm.join(', '), itemRows, dbValues, monthValues, stdCommValues, vendorValues, PIVOT_HEADER);
+  // ITEM_CODE is a mix of strings and raw numbers across sheets (e.g. Fittings has
+  // bare numeric codes) - normalize to strings so it matches the multi-select's
+  // checkbox values (always strings) on both sides.
+  const itemCodeValues = Array.from(new Set(itemRows.map(r => String(r[3])))).filter(Boolean).sort();
+  filteredSheetsHtml[f.name] = buildPivotPageHtml(f.name, f.stdComm.join(', '), itemRows, dbValues, monthValues, stdCommValues, vendorValues, itemCodeValues, PIVOT_HEADER);
   console.log(f.name + ':', itemRows.length, 'flat rows (dynamic item table + charts)');
 }
 
