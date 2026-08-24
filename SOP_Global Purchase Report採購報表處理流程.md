@@ -1,6 +1,6 @@
 # Global Purchase Report 標準作業程序 (SOP)
 
-**版本**: v1.5（新增外部交付檔案流程 `Publish-OutsideReport.ps1`：把月報數值複製進 OUTSIDETEMP.xlsx、延伸 Table1、重新整理樞紐分析表、另存當月交付檔；七個實體全部支援；Q2:AJ2 公式改回自動化，一欄一欄填完立刻凍結成數值，避免整批重算；AA/AB 改用 PowerShell 計算取代 MAXIFS/MINIFS；新增「New Vendors」新供應商檢查分頁；修正 MIL 的 PART TYPE 欄位問題）
+**版本**: v1.8（新增第 8 節「HTML 互動版報表」：獨立工具，把當月最終報表轉成單一自包含互動式 HTML 檔案，刻意不接自動化流程；v1.7 AA/AB 改為全程人工處理：`Build-GlobalPurchaseReport.ps1` 不再碰 AA/AB 及其依賴欄位，新增 `Complete-FormulaColumns.ps1` 接手 AC/AD/AE/AF/AG/AH/AI + New Vendors 分頁，新增步驟3.5/3.6；v1.6 新增第3.1節「第2列母版公式目前版本」存證表，記錄2026-08人工效能優化）
 **適用範圍**: 每月 Global Purchase Report（MHK/STC/MZQ/MIL/RACO/TVS/MAZ 採購資料彙總）產製流程
 **取代對象**: 原本由 UiPath RPA 專案 "Global Purchase Report" 自動執行的合併/彙總/報表產出步驟
 
@@ -85,7 +85,41 @@
 
 - **Report 共用公式（Q:S 匯率換算、U:AD 廠商/料號/商品標準化與比價）**：所有實體都用同一組公式，公式母版固定在 Report 的**第 2 列**（`Q2:AJ2`）。
   ⚠️ **重要架構變更**：Report 樣板檔案裡，第 3 列到歷史最後一列（目前約 29,511 列）的 Q:AJ 已經從「即時公式」**手動轉成靜態數值**（只留第 2 列是公式），目的是避免每次新增資料時，Excel 觸發全部 3 萬多列重新計算（尤其 U:AD 的 MAXIFS/MINIFS 是整欄掃描，資料量大時會讓 Excel 卡住 10 分鐘以上甚至更久）。
-  因此 `Build-GlobalPurchaseReport.ps1` **不會**自動把 Q2:AJ2 公式貼到新增列——這一步改為**人工**：腳本執行完畢後，畫面會印出新增列的範圍（例如「New rows 29512 to 36272 need Q2:AJ2 copied down manually in Excel」），承辦人自行在 Excel 裡把 Q2:AJ2 複製、貼到那個範圍即可。
+  Q2:AJ2 公式的自動填入/凍結已由 `Build-GlobalPurchaseReport.ps1` 自動處理（依相依順序一欄一欄填、算完立刻凍結，見第 4 節步驟 3 的執行畫面）。
+
+### 3.1 第 2 列母版公式目前版本（2026-08-03 校對，含 2026-08 人工優化後的版本）
+
+⚠️ **這份表格是「目前實際版本」的存證，之後每次人工調整第 2 列公式（例如效能優化）都要回來更新這裡，否則 SOP 會跟真實檔案脫節。**
+
+2026-08 期間，因應 Excel 效能問題（整欄公式掃描造成 MAXIFS/MINIFS、VLOOKUP 極慢），由 Copilot 協助人工優化了以下公式：
+- **範圍全部改成有界範圍**（例如 `R:R` → `R$2:R$100000`，`'MMS DATA'!A:C` → `'MMS DATA'!A$1:C$184569`），避免整欄（104 萬列）掃描。
+- **AC/AD/AE 的料號 key 改用 `LET()` 正規化**：`H` 欄（ITEM_CODE）有些來源檔案帶前導零（例如 `001516062000`），有些沒有（`1516062000`），造成同一個料號在 `AC`（自己這列的 key）跟 `AD`/`AE`（目標比對 key）文字對不上、`VLOOKUP` 找不到而 `#N/A`。修正方式：純數字的料號用 `TEXT(VALUE(code),"0")` 去掉前導零再組 key；非純數字（如 `R0012`、`1-8-PL15101`）`VALUE()` 會失敗，`IFERROR` 退回原字串，不受影響。
+- **AG 也補上 `IFERROR(...,AF2)` 防呆**（原本只有 AH 有，AG 沒有，統一補齊）。
+
+| 欄位 | 目前公式（第2列）| 備註 |
+|---|---|---|
+| Q | `=IF(L2="","",INDEX('Exchange Rate'!$O$3:$Z$200,MATCH('MHK+STC+MZQ+MIL+RACO Data'!X2,'Exchange Rate'!$O$3:$O$200,0),(MATCH('MHK+STC+MZQ+MIL+RACO Data'!N2,'Exchange Rate'!$O$3:$Z$3,0))))` | 未變更，本來就是有界範圍 |
+| R | `=ROUND(IF(Q2="","",O2*Q2),4)` | 未變更 |
+| S | `=IF(Q2="","",L2*O2*Q2)` | 未變更 |
+| U | `=IF(A2="","",IFERROR(VLOOKUP(CONCATENATE(T2,D2),'Std Vendor Name'!D:E,2,FALSE),"NEW VENDOR"))` | 查找表仍是整欄 D:E，尚未優化 |
+| V | `=IF(A2="","",IFERROR(VLOOKUP(H2,'MMS DATA'!A$1:C$184569,2,FALSE),IFERROR(VLOOKUP(H2,'Std Part Desc'!A$2:C$9510,2,FALSE),I2)))` | 改有界範圍 |
+| W | `=IF(A2="","",IFERROR(VLOOKUP(H2,'MMS DATA'!A$1:C$189981,3,FALSE),IF(LEN(J2)=3,CONCAT(J2,"-"),LEFT(J2,4))))` | 改有界範圍 |
+| Y | `=IF(A2="","",IF(L2<=0,"Ignore",IF(U2="MHK","Ignore",IF(U2="MIL","Ignore",IF(U2="MZQ","Ignore",IF(U2="ABG","Ignore",IF(U2="STC","Ignore",IF(AND(T2="MIL",LEFT(H2,7)="2-3-DSP"),"Ignore","Consider"))))))))` | 未變更 |
+| Z | `=LEN(W2)` | 未變更 |
+| AA | `=IF(Y2="Ignore","",IF(K2="B",MAXIFS(R$2:R$100000,H$2:H$100000,H2,K$2:K$100000,"B",Y$2:Y$100000,"Consider"),MAXIFS(R$2:R$100000,H$2:H$100000,H2,K$2:K$100000,"O",Y$2:Y$100000,"Consider")))` | 改有界範圍（原為整欄 R:R/H:H/K:K/Y:Y）；⚠️ 這欄現在恢復成**活公式**，不再是 PowerShell 計算後寫死的數值（跟 README 進度表原本記錄的做法不同，見下方已知限制） |
+| AB | `=IF(Y2="Ignore","",IF(K2="B",MINIFS(R$2:R$100000,H$2:H$100000,H2,K$2:K$100000,"B"),MINIFS(R$2:R$100000,H$2:H$100000,H2,K$2:K$100000,"O")))` | 同上 |
+| AC | `=IF(Y2="Ignore","",LET(code,H2,norm,IFERROR(TEXT(VALUE(code),"0"),code),norm&K2&ROUND(R2,4)))` | 新增料號正規化 |
+| AD | `=IF(Y2="Ignore","",LET(code,H2,norm,IFERROR(TEXT(VALUE(code),"0"),code),norm&K2&ROUND(AA2,4)))` | 新增料號正規化 |
+| AE | `=IF(Y2="ignore","",LET(code,H2,norm,IFERROR(TEXT(VALUE(code),"0"),code),norm&K2&ROUND(AB2,4)))` | 新增料號正規化 |
+| AF | `=IF(Y2="ignore","",U2)` | 未變更 |
+| AG | `=IF(Y2="ignore","",IFERROR(VLOOKUP(AD2,AC$2:AF$100000,4,FALSE),AF2))` | 改有界範圍 + 補上 IFERROR 防呆 |
+| AH | `=IF(Y2="ignore","",IFERROR(VLOOKUP(AE2,AC$2:AF$100000,4,FALSE),AF2))` | 改有界範圍 |
+| AI | `=IFERROR(VLOOKUP(H2,Part_MfgCat_Code!B:C,2,FALSE),IFERROR(VLOOKUP(MID(H2,1,7),Part_MfgCat_Code!A:C,3,FALSE),""))` | 未變更，查找表仍是整欄 |
+| AJ | `=VLOOKUP(W2,SCOMM!A:B,2,FALSE)` | 未變更，查找表仍是整欄 |
+
+**尚未優化的整欄查找**（下次若還嫌慢可以繼續處理）：`U` 的 `'Std Vendor Name'!D:E`、`AI` 的 `Part_MfgCat_Code!B:C`/`A:C`、`AJ` 的 `SCOMM!A:B`。
+
+**2026-08-04 架構變更（處理上述疑慮）**：`AA`/`AB` 現在是**活公式**（有界範圍 MAXIFS/MINIFS），不再是 v1.4 記錄的「PowerShell 分組計算後寫死數值」做法。為了避免「AA/AB 改了、AC/AD/AE 沒跟著重算」重演本次的 `#N/A` 事故，改成明確指令：**`Build-GlobalPurchaseReport.ps1` 從此不再處理 AA/AB 跟任何依賴它們的欄位**，AA/AB 一律由承辦人手動把 `AA2:AB2` 複製到新增列、算過、確認無誤後，再執行 `Complete-FormulaColumns.ps1` 補上 AC/AD/AE/AF/AG/AH/AI 跟「New Vendors」檢查分頁。詳細步驟見第4節步驟3.5、3.6。這樣「AA/AB 是不是最新的」永遠由人工把關，不會有腳本自動用到舊值的風險。
 
 ---
 
@@ -126,18 +160,36 @@ Copying report template to output path...
 Appended rows XXXXX to YYYYY into Report Data sheet.
 [ExchangeRate] Processing ...
 [ExchangeRate] Filled N Block 1 column(s) for 2026-06 at row NN.
-Filling Q:S/U:AJ formulas for rows XXXXX to YYYYY (one column at a time)...
+Filling Q:S/U:AJ (AA/AB-independent columns) for rows XXXXX to YYYYY (one column at a time)...
   [U] filled, calculated, frozen
   ...
-[NewVendorCheck] Found N 'NEW VENDOR' row(s) in rows XXXXX-YYYYY - copied to 'New Vendors' sheet for review.
-  [AA/AB] computed in PowerShell (grouped by item code + B/O type), written as values
-  [AC] filled, calculated, frozen
-  ...
 Saved: ...\REPORT\FIN_MHK+STC+MZQ+MIL+RACO+TVS_PUR_REPORT_2026-06.xlsx
-=== Done. Please open the report, run Data > Refresh All, and spot-check before sending. ===
+=== Done with the automated part. Manual step needed next: ===
+  1. Open the report in Excel, copy AA2:AB2 down to rows XXXXX-YYYYY, and calculate.
+  2. Once confirmed correct, run: .\Complete-FormulaColumns.ps1 -ReportMonth "2026-06"
+     (fills AC/AD/AE/AF/AG/AH/AI, freezes them, and builds the New Vendors review sheet)
 ```
 
-> Q2:AJ2 的公式填入已經**自動化**（一欄一欄填、算完立刻凍結成數值，避免整批一起重算卡住）。歷史列的公式不會被重跑，只處理這次新增的列。AA/AB（Max/Min PO Price）改用 PowerShell 計算後直接寫入數值，不再透過 Excel 的 MAXIFS/MINIFS 公式，速度更快、也不會隨資料量增加而變慢。X 欄（yyyy-mm 期間索引）維持人工在 Temp 參考檔案裡預先鋪好公式到 X70000，腳本不會去動它。
+> Q:S 跟 U/V/W/Y/Z/AJ 這幾欄的公式填入已經**自動化**（一欄一欄填、算完立刻凍結成數值，避免整批一起重算卡住）。歷史列的公式不會被重跑，只處理這次新增的列。X 欄（yyyy-mm 期間索引）維持人工在 Temp 參考檔案裡預先鋪好公式到 X70000，腳本不會去動它。
+>
+> ⚠️ **2026-08-04 起，AA/AB（Max/Min PO Price）改為全程人工處理，腳本完全不會碰這兩欄**（見第 3.1 節的架構變更說明）。執行完主腳本後，**務必先完成下面步驟 3.5 再進行步驟 3.6**，不能跳過。
+
+### 步驟 3.5：【人工】複製 AA2:AB2 公式到新增列
+
+1. 打開步驟 3 產出的報表，切到「MHK+STC+MZQ+MIL+RACO Data」分頁
+2. 選取 `AA2:AB2`，複製，貼到這次新增列的範圍（腳本畫面上會印出確切範圍，例如「rows 36328-43143」）
+3. 按 F9 或「公式」→「計算工作表」，確認算出來的結果合理（沒有整片 `#N/A`、數字看起來正常）
+4. 存檔
+
+⚠️ 這一步是後面步驟 3.6（`Complete-FormulaColumns.ps1`）能不能正確跑的前提——它會先檢查新增列的 AA 是不是已經有公式，沒有的話會直接報錯中止，不會用空白的 AA/AB 去產生後面的欄位（避免重演「舊 key 對不上新值」的 `#N/A` 事故）。
+
+### 步驟 3.6：執行 Complete-FormulaColumns.ps1
+
+```powershell
+.\Complete-FormulaColumns.ps1 -ReportMonth "2026-06"
+```
+
+這支腳本會：自動用 B 欄（PO_REC_DATE）比對出這個月的新增列範圍 → 檢查 AA 是否已經人工填好（步驟3.5沒做會直接報錯）→ 一欄一欄填 AC/AF/AD/AE/AG/AH/AI 並算完立刻凍結成數值 → 順便把這次新增列裡 Std Vendor Name 算出 "NEW VENDOR" 的整列複製到「New Vendors」分頁供檢查 → 存檔。
 
 ### 步驟 4：（如有需要）更新 TVS 翻譯/商品代碼
 
@@ -149,7 +201,7 @@ Saved: ...\REPORT\FIN_MHK+STC+MZQ+MIL+RACO+TVS_PUR_REPORT_2026-06.xlsx
 
 ### 步驟 5：檢查「New Vendors」分頁
 
-腳本執行時會自動把這次新增列裡，Std Vendor Name 算出 "NEW VENDOR"（代表廠商+實體的組合不在標準供應商名稱對照表裡）的整列，複製到報表裡的「New Vendors」分頁，方便直接檢查，不用在 3 萬多列的 Data 分頁裡手動篩選。這個分頁每次執行都會清空重填，只反映當月的新供應商，不會累積歷史資料。若有需要，把新供應商加進「Std Vendor Name」對照表後，下個月執行就不會再出現。
+`Complete-FormulaColumns.ps1` 執行時會自動把這次新增列裡，Std Vendor Name 算出 "NEW VENDOR"（代表廠商+實體的組合不在標準供應商名稱對照表裡）的整列，複製到報表裡的「New Vendors」分頁，方便直接檢查，不用在 3 萬多列的 Data 分頁裡手動篩選。這個分頁每次執行都會清空重填，只反映當月的新供應商，不會累積歷史資料。若有需要，把新供應商加進「Std Vendor Name」對照表後，下個月執行就不會再出現。
 
 ### 步驟 6：（建議）產出稽核摘要報告
 
@@ -225,7 +277,9 @@ Saved: ...\REPORT\FIN_MHK+STC+MZQ+MIL+RACO+TVS_PUR_REPORT_2026-06.xlsx
 | 2026-07-31 | v1.3 | 收到 MAZ 2026-06 資料後補上第 7 個實體：無 Trimmed 樣板、直接對應（比照 TVS 用歷史 Report 列反推驗證），PBRT_TYPE 固定 "B"、PO_CUR 為實際欄位（非常數，因 MAZ 有多幣別交易）；`MAZ\MAZ.xlsx` 不存在時自動略過、不中斷執行；`New-ReportAuditSummary.ps1` 加入 MAZ 到實體清單；移除已解決的「MAZAL 排除」章節，改記錄 PEN 匯率缺口等真正的已知限制 |
 | 2026-07-31 | v1.4 | 修正 Exchange Rate 分頁的架構誤解：原本誤把美金換算結果直接寫死進 O:Z（本該是活公式），且完全沒填 C:M 的原始港幣匯率區塊，現已修正為 C:M 直接寫值、O:Z 一律重新寫入公式（不再靠複製上一列，因上一列也可能已被凍結成靜態值）；Q2:AJ2 公式填入改回自動化，一欄一欄依相依順序填公式、算完立刻凍結成數值再換下一欄，避免整批一起重算卡住 Excel；X 欄（yyyy-mm）改由人工在 Temp 參考檔預先鋪好公式到 X70000，腳本不再處理；AA/AB（Max/Min PO Price）改用 PowerShell 依料號+B/O 分組計算後直接寫值，取代原本會隨資料量變慢的 MAXIFS/MINIFS 公式；新增「New Vendors」分頁，自動彙整當月「NEW VENDOR」列供人工檢查；修正 MIL 來源檔 PART TYPE（K 欄）其實是部門代碼、導致 AG 欄 #N/A 的問題 |
 | 2026-07-31 | v1.5 | 新增 `Publish-OutsideReport.ps1`：把當月報表「MHK+STC+MZQ+MIL+RACO Data」分頁的數值複製進外部交付工作檔 `OUTSIDETEMP.xlsx`、延伸 Data 分頁的 `Table1` 表格範圍、重新整理所有樞紐分析表、存檔後另存為當月交付檔（`FIN_..._PUR_REPORT-(1-M)YYYY_YYYYMMDD_RV0.xlsx`，同日重跑自動遞增 RV 編號）。開發過程中發現並修正一個嚴重問題：用大陣列一次性覆寫整個 Table 範圍（含表頭列）會讓 Table 物件損毀、造成所有樞紐分析表失效，即使表頭文字相同也一樣——已改為「先延伸表格、只寫資料列（跳過表頭列）」，並用一次性測試副本驗證表格能正常存活後才套用到正式檔案。另外發現 OUTSIDETEMP.xlsx 裡有個已損壞的 `data` 命名範圍（`=#REF!#REF!`），是 3 個隱藏分頁共 18 個樞紐分析表的來源，屬既有缺口，記錄在第 5 節 |
-| 2026-08-24 | v1.6 | 新增 `Global Purchase Report RPA\HTML_Report_Generator\`（獨立工具，見 README「HTML 互動版報表」一節）：把當月最終報表轉成單一自包含互動式 HTML 檔案。刻意不接在 `Build-GlobalPurchaseReport.ps1` 或 `Complete-FormulaColumns.ps1` 之後自動執行，理由同 AA/AB 定稿前不應產出對外檔案的原則——見下方新增小節 |
+| 2026-08-03 | v1.6 | 人工（Copilot 協助）優化第2列母版公式效能：U/V/W/AA/AB/AG/AH 等欄的整欄查找範圍改成有界範圍（如 `R:R`→`R$2:R$100000`），避免104萬列全掃描；同時發現並修正一個資料一致性 bug——ITEM_CODE（H欄）跨來源檔前導零不一致（例：`001516062000` vs `1516062000`）造成 `AC/AD/AE` 組合 key 對不上，`AG/AH` VLOOKUP 產生 257 個 `#N/A`，改用 `LET()+TEXT(VALUE(...),"0")` 正規化純數字料號、非數字料號用 `IFERROR` 退回原字串；另修正一筆來源資料幣別打字錯誤（`EURD`→`EUR`）；新增第3.1節記錄目前完整公式表；記錄 AA/AB 恢復為活公式（非 v1.4 的 PowerShell 靜態值）的架構疑慮，需要每次調整都連動重跑 AC→AD/AE→AG/AH |
+| 2026-08-04 | v1.7 | 依明確指示，AA/AB 改為全程人工處理：`Build-GlobalPurchaseReport.ps1` 移除 `Set-MaxMinPriceColumns`（AA/AB）與 `Copy-NewVendorRowsToReviewSheet`（New Vendors 分頁）兩個函式，主腳本執行完只處理 Q:S/U/V/W/Y/Z/AJ（AA/AB 無關的欄位）就停止，印出明確的下一步指示；新增 `Complete-FormulaColumns.ps1`，用 B 欄（PO_REC_DATE）自動比對出當月新增列範圍、檢查 AA 是否已經人工填好（沒填會直接報錯中止，避免用空白 AA/AB 產生 AC/AD/AE 重演 #N/A 事故）、才繼續填 AC/AF/AD/AE/AG/AH/AI 並凍結、順便建立 New Vendors 分頁；新增步驟3.5（人工複製 AA2:AB2）、3.6（執行 Complete-FormulaColumns.ps1），原步驟4起皆順延一號 |
+| 2026-08-24 | v1.8 | 新增 `Global Purchase Report RPA\HTML_Report_Generator\`（獨立工具，見 README「HTML 互動版報表」一節）：把當月最終報表轉成單一自包含互動式 HTML 檔案。刻意不接在 `Build-GlobalPurchaseReport.ps1` 或 `Complete-FormulaColumns.ps1` 之後自動執行，理由同 AA/AB 定稿前不應產出對外檔案的原則——見下方新增小節 |
 
 ---
 

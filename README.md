@@ -25,8 +25,16 @@ cd "C:\Users\User\Desktop\Global Purchase Report Claude"
 .\Build-GlobalPurchaseReport.ps1 -ReportMonth "2026-06"
 ```
 
-執行前請先完成 SOP 第 2 節的人工準備步驟（匯率表 + 七個實體的當月資料；MAZ 若當月沒收到可以先不放，腳本會自動略過）。執行完畢後會自動填好 Q2:AJ2 公式（一欄一欄填、算完立刻凍結成數值，避免整批重算卡住），並把當月新出現的「NEW VENDOR」列自動整理到「New Vendors」分頁供檢查。詳細步驟、預期畫面輸出、疑難排解都在 SOP 文件裡。
-Complete the manual prep steps in SOP §2 first (exchange rate file + the seven entities' monthly data; MAZ can be left out if not received that month — the script skips it automatically). Q2:AJ2 formulas get filled automatically after it runs (one column at a time, frozen to values immediately after each to avoid a mass recalculation hang), and any new "NEW VENDOR" rows for the month are automatically collected into a "New Vendors" sheet for review. Full steps, expected output, and troubleshooting are in the SOP doc.
+執行前請先完成 SOP 第 2 節的人工準備步驟（匯率表 + 七個實體的當月資料；MAZ 若當月沒收到可以先不放，腳本會自動略過）。執行完畢後會自動填好 Q:S 跟 U/V/W/Y/Z/AJ 公式（一欄一欄填、算完立刻凍結成數值，避免整批重算卡住）。詳細步驟、預期畫面輸出、疑難排解都在 SOP 文件裡。
+Complete the manual prep steps in SOP §2 first (exchange rate file + the seven entities' monthly data; MAZ can be left out if not received that month — the script skips it automatically). Q:S and U/V/W/Y/Z/AJ formulas get filled automatically after it runs (one column at a time, frozen to values immediately after each to avoid a mass recalculation hang). Full steps, expected output, and troubleshooting are in the SOP doc.
+
+⚠️ **2026-08-04 起，AA/AB（Max/Min PO Price）改為全程人工處理**：主腳本執行完後，先手動把 `AA2:AB2` 複製到新增列並計算確認，再執行：
+⚠️ **As of 2026-08-04, AA/AB (Max/Min PO Price) are handled entirely manually**: after the main script, manually copy `AA2:AB2` down to the new rows and calculate/confirm first, then run:
+```powershell
+.\Complete-FormulaColumns.ps1 -ReportMonth "2026-06"
+```
+這支腳本會自動找出當月新增列範圍、確認 AA 已經人工填好，才接著填 AC/AD/AE/AF/AG/AH/AI 並凍結、建立「New Vendors」檢查分頁。詳見 SOP 第4節步驟3.5/3.6。
+This script auto-detects the month's new rows, confirms AA was filled manually, then fills/freezes AC/AD/AE/AF/AG/AH/AI and builds the "New Vendors" review sheet. See SOP §4 steps 3.5/3.6.
 
 TVS 若翻譯/商品代碼有異常，另外執行：
 If TVS's translation/commodity codes need attention, run separately:
@@ -56,7 +64,8 @@ If an outside-delivery deliverable is needed (value-copy into OUTSIDETEMP.xlsx, 
 Global Purchase Report Claude/
 ├── README.md                                          ← 本文件
 ├── SOP_Global Purchase Report採購報表處理流程.md         ← 標準作業程序（人工步驟 + 執行步驟 + 已知限制）
-├── Build-GlobalPurchaseReport.ps1                      ← 主執行腳本
+├── Build-GlobalPurchaseReport.ps1                      ← 主執行腳本（AA/AB 及其依賴欄位除外，見下）
+├── Complete-FormulaColumns.ps1                         ← 手動填好 AA/AB 之後執行：AC/AD/AE/AF/AG/AH/AI + New Vendors 分頁
 ├── Update-TVSTranslations.ps1                          ← TVS 翻譯/商品代碼檢查與修補（獨立腳本）
 ├── New-ReportAuditSummary.ps1                          ← 稽核摘要（唯讀，最後列號 + 七實體列數 + 總列數）
 ├── Publish-OutsideReport.ps1                           ← 外部交付檔案：複製數值進 OUTSIDETEMP、延伸表格、重新整理樞紐分析表、另存當月交付檔
@@ -90,6 +99,8 @@ Global Purchase Report Claude/
 | 外部交付檔案流程（OUTSIDETEMP → 當月交付檔） | ✅ 已完成（`Publish-OutsideReport.ps1`：數值複製、延伸 Table1、重新整理樞紐分析表、另存新檔，含自動遞增 RV 編號）|
 | MAZ 的 PEN 匯率缺口 | 待處理（`STANDARD EXCHANGE RATE` 來源檔沒有 PEN 匯率）|
 | OUTSIDETEMP.xlsx 的 `data` 命名範圍已損壞 | 待處理（既有問題，非本次造成；影響 3 個隱藏分頁共 18 個樞紐分析表）|
+| 第2列母版公式效能優化（2026-08） | ✅ 已完成，U/V/W/AA/AB/AG/AH 改有界範圍；修正 ITEM_CODE 前導零不一致造成的 AG/AH #N/A（用 `LET()` 正規化）；完整公式表見 SOP 第3.1節 |
+| AA/AB 改為全程人工處理（2026-08-04）| ✅ 已完成：`Build-GlobalPurchaseReport.ps1` 不再碰 AA/AB 及依賴欄位；新增 `Complete-FormulaColumns.ps1`，人工填好 AA/AB 後執行，自動檢查沒填會報錯中止，避免重演 key 不同步 #N/A 問題 |
 
 ---
 
