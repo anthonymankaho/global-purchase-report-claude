@@ -184,8 +184,11 @@ const filteredSheetsHtml = {};
 // across all its lines, regardless of DB/Vendor grouping.
 // =========================================================================
 const PIVOT_HEADER = ['ITEM_CODE', 'Std Part Desc', 'Max Vendor', 'Max_PO_Price(USD)', 'Min Vendor', 'Min_PO_Price(USD)', 'DB', 'Vendor', 'Avg PO Price(USD)', 'Tot PO Price(USD)'];
+// Max_Vendor_DB is a new derived column (not present in the source Excel):
+// the vendor with the highest price for this item within this row's own DB.
+const PIVOT_HEADER_WITH_MAX_VENDOR_DB = ['ITEM_CODE', 'Std Part Desc', 'Max_Vendor_DB', 'Max Vendor', 'Max_PO_Price(USD)', 'Min Vendor', 'Min_PO_Price(USD)', 'DB', 'Vendor', 'Avg PO Price(USD)', 'Tot PO Price(USD)'];
 
-function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthValues, stdCommValues, vendorValues, itemCodeValues, header) {
+function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthValues, stdCommValues, vendorValues, itemCodeValues, header, addMaxVendorDbCol) {
   const chartRowsJsonStr = neutralize(JSON.stringify(itemRows));
   const dbValuesJsonStr = neutralize(JSON.stringify(dbValues));
   const monthValuesJsonStr = neutralize(JSON.stringify(monthValues));
@@ -193,6 +196,7 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
   const vendorValuesJsonStr = neutralize(JSON.stringify(vendorValues));
   const itemCodeValuesJsonStr = neutralize(JSON.stringify(itemCodeValues));
   const headerJsonStr = neutralize(JSON.stringify(header));
+  const addMaxVendorDbColJs = addMaxVendorDbCol ? 'true' : 'false';
 
   return `<!doctype html>
 <html>
@@ -224,6 +228,7 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
   table.dataTable { width: 100% !important; color: var(--text); }
   th, td { white-space: nowrap; }
   #exportBtn, #resetBtn { padding: 6px 14px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); }
+  body.col-divider #dataTable th:nth-child(2), body.col-divider #dataTable td:nth-child(2) { border-right: 2px solid var(--border); }
 
   .ms { position: relative; width: 180px; }
   .ms-toggle { width: 100%; text-align: left; padding: 5px 8px; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 12px; }
@@ -252,7 +257,7 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
   body[data-theme="dark"] .dataTables_wrapper .dataTables_paginate .paginate_button:hover { background: var(--hover-bg) !important; color: var(--text) !important; }
 </style>
 </head>
-<body>
+<body class="${addMaxVendorDbCol ? 'col-divider' : ''}">
 <div class="page-header">
   <h3>${pageName} - Std Comm: ${stdCommLabel} (Consider)</h3>
 </div>
@@ -287,20 +292,27 @@ var STDCOMM_VALUES = ${stdCommValuesJsonStr};
 var VENDOR_VALUES = ${vendorValuesJsonStr};
 var ITEMCODE_VALUES = ${itemCodeValuesJsonStr};
 var HEADER = ${headerJsonStr};
+var ADD_MAX_VENDOR_DB_COL = ${addMaxVendorDbColJs}; // test flag: adds a derived Max_Vendor_DB column (not in source Excel)
 var DB_COLORS = ['#005daa', '#c0392b', '#27ae60', '#e67e22', '#8e44ad', '#16a085', '#d35400', '#7f8c8d'];
 
 // Item-level (ITEM_CODE x DB x Vendor) breakdown, computed from whatever rows
 // are passed in (i.e. already filtered by Month/DB) - Avg is quantity-weighted
 // (SUM(TOT_PO_PRICE_USD)/SUM(REC_QTY)), matching Excel's PivotTable exactly.
+// Max Vendor/Max_PO_Price(USD)/Min Vendor/Min_PO_Price(USD) stay item-wide,
+// unchanged from the original Excel-derived definition. Max_Vendor_DB (when
+// ADD_MAX_VENDOR_DB_COL is on) is a new, purely derived column - not present
+// in the source workbook - showing which vendor had the highest price for
+// this item within THIS row's own DB specifically.
 function computeItemPivot(rows) {
   var byItem = {};
   rows.forEach(function (r) {
     var item = r[3], desc = r[4], db = r[0], vendor = r[5], price = r[6], tot = r[2], qty = r[7];
-    if (!byItem[item]) byItem[item] = { desc: desc, maxPrice: -Infinity, maxVendor: null, minPrice: Infinity, minVendor: null, groups: {} };
+    if (!byItem[item]) byItem[item] = { desc: desc, maxPrice: -Infinity, maxVendor: null, minPrice: Infinity, minVendor: null, dbMax: {}, groups: {} };
     var it = byItem[item];
     if (typeof price === 'number') {
       if (price > it.maxPrice) { it.maxPrice = price; it.maxVendor = vendor; }
       if (price < it.minPrice) { it.minPrice = price; it.minVendor = vendor; }
+      if (!it.dbMax[db] || price > it.dbMax[db].price) { it.dbMax[db] = { price: price, vendor: vendor }; }
     }
     var key = db + '|' + vendor;
     if (!it.groups[key]) it.groups[key] = { db: db, vendor: vendor, sumQty: 0, sumTot: 0 };
@@ -313,7 +325,13 @@ function computeItemPivot(rows) {
     var it = byItem[item];
     Object.keys(it.groups).forEach(function (key) {
       var g = it.groups[key];
-      out.push([item, it.desc, it.maxVendor, it.maxPrice, it.minVendor, it.minPrice, g.db, g.vendor, g.sumQty ? g.sumTot / g.sumQty : 0, g.sumTot]);
+      var row = [item, it.desc];
+      if (typeof ADD_MAX_VENDOR_DB_COL !== 'undefined' && ADD_MAX_VENDOR_DB_COL) {
+        var dbMaxInfo = it.dbMax[g.db];
+        row.push(dbMaxInfo ? dbMaxInfo.vendor : null);
+      }
+      row.push(it.maxVendor, it.maxPrice, it.minVendor, it.minPrice, g.db, g.vendor, g.sumQty ? g.sumTot / g.sumQty : 0, g.sumTot);
+      out.push(row);
     });
   });
   return out;
@@ -613,7 +631,11 @@ for (const f of FILTER_SHEETS) {
   // bare numeric codes) - normalize to strings so it matches the multi-select's
   // checkbox values (always strings) on both sides.
   const itemCodeValues = Array.from(new Set(itemRows.map(r => String(r[3])))).filter(Boolean).sort();
-  filteredSheetsHtml[f.name] = buildPivotPageHtml(f.name, f.stdComm.join(', '), itemRows, dbValues, monthValues, stdCommValues, vendorValues, itemCodeValues, PIVOT_HEADER);
+  // TEST: new Max_Vendor_DB column + divider after Std Part Desc - GLID only for
+  // now, per request, pending confirmation before extending to the rest.
+  const addMaxVendorDbCol = f.name === 'GLID';
+  const header = addMaxVendorDbCol ? PIVOT_HEADER_WITH_MAX_VENDOR_DB : PIVOT_HEADER;
+  filteredSheetsHtml[f.name] = buildPivotPageHtml(f.name, f.stdComm.join(', '), itemRows, dbValues, monthValues, stdCommValues, vendorValues, itemCodeValues, header, addMaxVendorDbCol);
   console.log(f.name + ':', itemRows.length, 'flat rows (dynamic item table + charts)');
 }
 
