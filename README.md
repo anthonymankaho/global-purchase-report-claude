@@ -113,9 +113,9 @@ Global Purchase Report Claude/
 
 ## HTML 互動版報表 / Interactive HTML report
 
-`Global Purchase Report RPA\HTML_Report_Generator\` 底下的獨立工具，把每月的最終報表（`Global Purchase Report RPA\REPORT\` 裡的 `FIN_..._PUR_REPORT-(x-y)YYYY_YYYYMMDD_RVn.xlsx`）轉成單一自包含的互動式 HTML 檔案（Dashboard 圖表 + 篩選器 + 淺/深色模式；GLID/Fittings/Packaging/Coating 改成可依 Month/DB/Std Comm/Std Vendor Name 即時篩選的明細表；Exchange Rate 維持原生 Excel 匯出樣式）。
+`Global Purchase Report RPA\HTML_Report_Generator\` 底下的獨立工具，把每月的最終報表（`Global Purchase Report RPA\REPORT\` 裡的 `FIN_..._PUR_REPORT-(x-y)YYYY_YYYYMMDD_RVn.xlsx`）轉成單一自包含的互動式 HTML 檔案（Dashboard 圖表 + 篩選器 + 淺/深色模式；GLID/Fittings/Packaging/Coating 改成可依 Month/DB/Std Comm/Std Vendor Name/Item Code 即時篩選的明細表；Exchange Rate 維持原生 Excel 匯出樣式）。篩選是即時從 Data 分頁原始交易資料算出來的，不是讀 Excel 樞紐分析表快取，所以篩選會同時連動圖表跟明細表。
 
-A standalone tool under `Global Purchase Report RPA\HTML_Report_Generator\` that converts the month's final report (`FIN_..._PUR_REPORT-(x-y)YYYY_YYYYMMDD_RVn.xlsx` in `Global Purchase Report RPA\REPORT\`) into a single self-contained interactive HTML file (Dashboard with charts + filters + light/dark mode; GLID/Fittings/Packaging/Coating rebuilt as item-level tables that respond live to Month/DB/Std Comm/Std Vendor Name filters; Exchange Rate kept as a native Excel-export look).
+A standalone tool under `Global Purchase Report RPA\HTML_Report_Generator\` that converts the month's final report (`FIN_..._PUR_REPORT-(x-y)YYYY_YYYYMMDD_RVn.xlsx` in `Global Purchase Report RPA\REPORT\`) into a single self-contained interactive HTML file (Dashboard with charts + filters + light/dark mode; GLID/Fittings/Packaging/Coating rebuilt as item-level tables that respond live to Month/DB/Std Comm/Std Vendor Name/Item Code filters; Exchange Rate kept as a native Excel-export look). Filters are computed live from the raw Data-sheet transactions rather than Excel's pivot cache, so they drive both the charts and the table together.
 
 ```powershell
 cd "C:\Users\User\Desktop\Global Purchase Report Claude\Global Purchase Report RPA\HTML_Report_Generator"

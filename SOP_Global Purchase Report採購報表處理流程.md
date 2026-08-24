@@ -1,6 +1,6 @@
 # Global Purchase Report 標準作業程序 (SOP)
 
-**版本**: v1.8（新增第 8 節「HTML 互動版報表」：獨立工具，把當月最終報表轉成單一自包含互動式 HTML 檔案，刻意不接自動化流程；v1.7 AA/AB 改為全程人工處理：`Build-GlobalPurchaseReport.ps1` 不再碰 AA/AB 及其依賴欄位，新增 `Complete-FormulaColumns.ps1` 接手 AC/AD/AE/AF/AG/AH/AI + New Vendors 分頁，新增步驟3.5/3.6；v1.6 新增第3.1節「第2列母版公式目前版本」存證表，記錄2026-08人工效能優化）
+**版本**: v1.9（HTML 互動版報表修正 Exchange Rate 匯出 bug、新增 Item Code 篩選器；v1.8 新增第 8 節「HTML 互動版報表」：獨立工具，把當月最終報表轉成單一自包含互動式 HTML 檔案，刻意不接自動化流程；v1.7 AA/AB 改為全程人工處理：`Build-GlobalPurchaseReport.ps1` 不再碰 AA/AB 及其依賴欄位，新增 `Complete-FormulaColumns.ps1` 接手 AC/AD/AE/AF/AG/AH/AI + New Vendors 分頁，新增步驟3.5/3.6；v1.6 新增第3.1節「第2列母版公式目前版本」存證表，記錄2026-08人工效能優化）
 **適用範圍**: 每月 Global Purchase Report（MHK/STC/MZQ/MIL/RACO/TVS/MAZ 採購資料彙總）產製流程
 **取代對象**: 原本由 UiPath RPA 專案 "Global Purchase Report" 自動執行的合併/彙總/報表產出步驟
 
@@ -280,6 +280,7 @@ Saved: ...\REPORT\FIN_MHK+STC+MZQ+MIL+RACO+TVS_PUR_REPORT_2026-06.xlsx
 | 2026-08-03 | v1.6 | 人工（Copilot 協助）優化第2列母版公式效能：U/V/W/AA/AB/AG/AH 等欄的整欄查找範圍改成有界範圍（如 `R:R`→`R$2:R$100000`），避免104萬列全掃描；同時發現並修正一個資料一致性 bug——ITEM_CODE（H欄）跨來源檔前導零不一致（例：`001516062000` vs `1516062000`）造成 `AC/AD/AE` 組合 key 對不上，`AG/AH` VLOOKUP 產生 257 個 `#N/A`，改用 `LET()+TEXT(VALUE(...),"0")` 正規化純數字料號、非數字料號用 `IFERROR` 退回原字串；另修正一筆來源資料幣別打字錯誤（`EURD`→`EUR`）；新增第3.1節記錄目前完整公式表；記錄 AA/AB 恢復為活公式（非 v1.4 的 PowerShell 靜態值）的架構疑慮，需要每次調整都連動重跑 AC→AD/AE→AG/AH |
 | 2026-08-04 | v1.7 | 依明確指示，AA/AB 改為全程人工處理：`Build-GlobalPurchaseReport.ps1` 移除 `Set-MaxMinPriceColumns`（AA/AB）與 `Copy-NewVendorRowsToReviewSheet`（New Vendors 分頁）兩個函式，主腳本執行完只處理 Q:S/U/V/W/Y/Z/AJ（AA/AB 無關的欄位）就停止，印出明確的下一步指示；新增 `Complete-FormulaColumns.ps1`，用 B 欄（PO_REC_DATE）自動比對出當月新增列範圍、檢查 AA 是否已經人工填好（沒填會直接報錯中止，避免用空白 AA/AB 產生 AC/AD/AE 重演 #N/A 事故）、才繼續填 AC/AF/AD/AE/AG/AH/AI 並凍結、順便建立 New Vendors 分頁；新增步驟3.5（人工複製 AA2:AB2）、3.6（執行 Complete-FormulaColumns.ps1），原步驟4起皆順延一號 |
 | 2026-08-24 | v1.8 | 新增 `Global Purchase Report RPA\HTML_Report_Generator\`（獨立工具，見 README「HTML 互動版報表」一節）：把當月最終報表轉成單一自包含互動式 HTML 檔案。刻意不接在 `Build-GlobalPurchaseReport.ps1` 或 `Complete-FormulaColumns.ps1` 之後自動執行，理由同 AA/AB 定稿前不應產出對外檔案的原則——見下方新增小節 |
+| 2026-08-24 | v1.9 | HTML 互動版報表修正與擴充：(1) 修正 Exchange Rate 匯出 bug——`Worksheet.Select()` 不會限制「另存為網頁」的匯出範圍，實際上會把活頁簿裡所有可見分頁都匯出，導致抓到錯誤的分頁內容，改成先隱藏其他分頁再匯出；(2) GLID/Fittings/Packaging/Coating 新增第 5 個篩選器 Item Code；(3) GLID 頁測試性加入 ITEM_CODE/Std Part Desc 欄位分隔線（保留）與 Max_Vendor_DB 衍生欄位（後續取消，未套用到其他三頁） |
 
 ---
 
@@ -297,5 +298,7 @@ cd "C:\Users\User\Desktop\Global Purchase Report Claude\Global Purchase Report R
 不帶參數會自動抓 `REPORT\` 裡最新的來源報表；輸出檔名依來源檔名的報表期間（`(1-6)2026` → `202606`）命名，存回 `REPORT\` 資料夾。
 
 **目前為手動執行、刻意未排入自動化流程**：報表要等 AA/AB（Max/Min PO Price）人工填好並確認（見第 4 節）才算定稿，若自動接在 `Build-GlobalPurchaseReport.ps1` 之後執行，有可能拿到還沒補完 AA/AB 的報表去產生 HTML。等確認好要接在月結流程的哪一步之後（例如 `Complete-FormulaColumns.ps1` 執行完之後），再考慮排入自動化。
+
+**GLID/Fittings/Packaging/Coating 分頁篩選器**：Month、DB (Entity)、Std Comm、Std Vendor Name、Item Code 共 5 個多選篩選器 + Reset filters 按鈕，篩選會同時套用到圖表跟下方明細表（明細表是即時從 Data 分頁原始交易資料算出來的，不是讀 Excel 樞紐分析表的快取，所以篩選才能連動）。GLID 頁另外在 ITEM_CODE/Std Part Desc 兩欄後面加了一條分隔線，方便跟後面的欄位分開看。
 
 **已知限制**：需要 Node.js（COM 抽取資料後由 `build_report.js` 組出最終 HTML，vendor 端函式庫已內附在 `HTML_Report_Generator\vendor\`，不需連網）。
