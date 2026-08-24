@@ -97,3 +97,23 @@ Global Purchase Report Claude/
 
 - **MTC Purchase Report Claude**（`Desktop\MTC Purchase Report Claude\`）：同類型的先行專案，證實了「EPICOR 網站無可直接呼叫 API、瀏覽器自動化匯出會導致 Excel 殖屍程序」，本專案沿用其「人工匯出 + PowerShell 合併」的策略，但程式碼為重新撰寫，未共用其 `Common.ps1`。
 - **Weekly Exchange Rate PowerShell Rebuild**：另一個獨立的匯率報表 RPA 遷移專案，範圍與作法不同（該專案的匯率來源有直接可呼叫的 API）。
+
+---
+
+## HTML 互動版報表 / Interactive HTML report
+
+`Global Purchase Report RPA\HTML_Report_Generator\` 底下的獨立工具，把每月的最終報表（`Global Purchase Report RPA\REPORT\` 裡的 `FIN_..._PUR_REPORT-(x-y)YYYY_YYYYMMDD_RVn.xlsx`）轉成單一自包含的互動式 HTML 檔案（Dashboard 圖表 + 篩選器 + 淺/深色模式；GLID/Fittings/Packaging/Coating 改成可依 Month/DB/Std Comm/Std Vendor Name 即時篩選的明細表；Exchange Rate 維持原生 Excel 匯出樣式）。
+
+A standalone tool under `Global Purchase Report RPA\HTML_Report_Generator\` that converts the month's final report (`FIN_..._PUR_REPORT-(x-y)YYYY_YYYYMMDD_RVn.xlsx` in `Global Purchase Report RPA\REPORT\`) into a single self-contained interactive HTML file (Dashboard with charts + filters + light/dark mode; GLID/Fittings/Packaging/Coating rebuilt as item-level tables that respond live to Month/DB/Std Comm/Std Vendor Name filters; Exchange Rate kept as a native Excel-export look).
+
+```powershell
+cd "C:\Users\User\Desktop\Global Purchase Report Claude\Global Purchase Report RPA\HTML_Report_Generator"
+.\Generate-PurchaseReportHtml.ps1
+```
+
+不帶參數時會自動抓 `REPORT\` 裡最新的來源報表，輸出檔名依來源檔名的報表期間（如 `(1-6)2026` → `202606`）自動命名為 `FIN_Global_Purchase -Report_html_202606.html`，存回同一個 `REPORT\` 資料夾。也可用 `-SourceExcelPath` / `-OutputPath` 指定特定檔案。
+
+With no parameters it auto-detects the latest source report in `REPORT\` and names the output from the source filename's reporting period (e.g. `(1-6)2026` → `202606`), saving `FIN_Global_Purchase -Report_html_202606.html` back into the same `REPORT\` folder. Pass `-SourceExcelPath` / `-OutputPath` to target a specific file instead.
+
+> ⚠️ 目前**刻意沒有**自動接在 `Build-GlobalPurchaseReport.ps1` 後面執行：AA/AB（Max/Min PO Price）要等人工填好、確認過才算報表定稿（見上方「怎麼用」與 SOP），自動串接的話有可能拿到還沒補完的報表去產生 HTML。等確認要接在月結流程的哪一步之後，再考慮自動化串接。
+> This is **deliberately not** auto-chained onto `Build-GlobalPurchaseReport.ps1`: the report isn't final until AA/AB (Max/Min PO Price) are filled in manually and confirmed (see "How to use" above and the SOP) — auto-chaining risks generating HTML from an unfinished report. Revisit once it's clear exactly where in the monthly sequence this should trigger.

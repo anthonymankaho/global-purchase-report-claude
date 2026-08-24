@@ -224,4 +224,24 @@ Saved: ...\REPORT\FIN_MHK+STC+MZQ+MIL+RACO+TVS_PUR_REPORT_2026-06.xlsx
 | 2026-07-29 | v1.2 | 修正 RACO/TVS 樣板選取邏輯：改成固定開啟未命名日期的範本檔（不再自動抓「最新快照檔」），徹底解決同月重跑時的存檔衝突；新增 `New-ReportAuditSummary.ps1`（稽核摘要：報表最後列號、六實體當月列數、當月總列數），列為每月建議執行步驟之一 |
 | 2026-07-31 | v1.3 | 收到 MAZ 2026-06 資料後補上第 7 個實體：無 Trimmed 樣板、直接對應（比照 TVS 用歷史 Report 列反推驗證），PBRT_TYPE 固定 "B"、PO_CUR 為實際欄位（非常數，因 MAZ 有多幣別交易）；`MAZ\MAZ.xlsx` 不存在時自動略過、不中斷執行；`New-ReportAuditSummary.ps1` 加入 MAZ 到實體清單；移除已解決的「MAZAL 排除」章節，改記錄 PEN 匯率缺口等真正的已知限制 |
 | 2026-07-31 | v1.4 | 修正 Exchange Rate 分頁的架構誤解：原本誤把美金換算結果直接寫死進 O:Z（本該是活公式），且完全沒填 C:M 的原始港幣匯率區塊，現已修正為 C:M 直接寫值、O:Z 一律重新寫入公式（不再靠複製上一列，因上一列也可能已被凍結成靜態值）；Q2:AJ2 公式填入改回自動化，一欄一欄依相依順序填公式、算完立刻凍結成數值再換下一欄，避免整批一起重算卡住 Excel；X 欄（yyyy-mm）改由人工在 Temp 參考檔預先鋪好公式到 X70000，腳本不再處理；AA/AB（Max/Min PO Price）改用 PowerShell 依料號+B/O 分組計算後直接寫值，取代原本會隨資料量變慢的 MAXIFS/MINIFS 公式；新增「New Vendors」分頁，自動彙整當月「NEW VENDOR」列供人工檢查；修正 MIL 來源檔 PART TYPE（K 欄）其實是部門代碼、導致 AG 欄 #N/A 的問題 |
-| 2026-07-31 | v1.5 | 新增 `Publish-OutsideReport.ps1`：把當月報表「MHK+STC+MZQ+MIL+RACO Data」分頁的數值複製進外部交付工作檔 `OUTSIDETEMP.xlsx`、延伸 Data 分頁的 `Table1` 表格範圍、重新整理所有樞紐分析表、存檔後另存為當月交付檔（`FIN_..._PUR_REPORT-(1-M)YYYY_YYYYMMDD_RV0.xlsx`，同日重跑自動遞增 RV 編號）。開發過程中發現並修正一個嚴重問題：用大陣列一次性覆寫整個 Table 範圍（含表頭列）會讓 Table 物件損毀、造成所有樞紐分析表失效，即使表頭文字相同也一樣——已改為「先延伸表格、只寫資料列（跳過表頭列）」，並用一次性測試副本驗證表格能正常存活後才套用到正式檔案。另外發現 OUTSIDETEMP.xlsx 裡有個已損壞的 `data` 命名範圍（`=#REF!#REF!`），是 3 個隱藏分頁共 18 個樞紐分析表的來源，屬既有缺口、記錄在第 5 節 |
+| 2026-07-31 | v1.5 | 新增 `Publish-OutsideReport.ps1`：把當月報表「MHK+STC+MZQ+MIL+RACO Data」分頁的數值複製進外部交付工作檔 `OUTSIDETEMP.xlsx`、延伸 Data 分頁的 `Table1` 表格範圍、重新整理所有樞紐分析表、存檔後另存為當月交付檔（`FIN_..._PUR_REPORT-(1-M)YYYY_YYYYMMDD_RV0.xlsx`，同日重跑自動遞增 RV 編號）。開發過程中發現並修正一個嚴重問題：用大陣列一次性覆寫整個 Table 範圍（含表頭列）會讓 Table 物件損毀、造成所有樞紐分析表失效，即使表頭文字相同也一樣——已改為「先延伸表格、只寫資料列（跳過表頭列）」，並用一次性測試副本驗證表格能正常存活後才套用到正式檔案。另外發現 OUTSIDETEMP.xlsx 裡有個已損壞的 `data` 命名範圍（`=#REF!#REF!`），是 3 個隱藏分頁共 18 個樞紐分析表的來源，屬既有缺口，記錄在第 5 節 |
+| 2026-08-24 | v1.6 | 新增 `Global Purchase Report RPA\HTML_Report_Generator\`（獨立工具，見 README「HTML 互動版報表」一節）：把當月最終報表轉成單一自包含互動式 HTML 檔案。刻意不接在 `Build-GlobalPurchaseReport.ps1` 或 `Complete-FormulaColumns.ps1` 之後自動執行，理由同 AA/AB 定稿前不應產出對外檔案的原則——見下方新增小節 |
+
+---
+
+## 8. HTML 互動版報表（獨立工具）
+
+`Global Purchase Report RPA\HTML_Report_Generator\` 底下的 `Generate-PurchaseReportHtml.ps1`，把 `REPORT\` 資料夾裡當月的最終報表轉成一份單一檔案的互動式 HTML（Dashboard 圖表與篩選器、GLID/Fittings/Packaging/Coating 明細表可即時篩選、Exchange Rate 維持原生 Excel 樣式），方便不方便開 Excel 的人（例如用手機/平板）瀏覽報表。
+
+用法：
+
+```powershell
+cd "C:\Users\User\Desktop\Global Purchase Report Claude\Global Purchase Report RPA\HTML_Report_Generator"
+.\Generate-PurchaseReportHtml.ps1
+```
+
+不帶參數會自動抓 `REPORT\` 裡最新的來源報表；輸出檔名依來源檔名的報表期間（`(1-6)2026` → `202606`）命名，存回 `REPORT\` 資料夾。
+
+**目前為手動執行、刻意未排入自動化流程**：報表要等 AA/AB（Max/Min PO Price）人工填好並確認（見第 4 節）才算定稿，若自動接在 `Build-GlobalPurchaseReport.ps1` 之後執行，有可能拿到還沒補完 AA/AB 的報表去產生 HTML。等確認好要接在月結流程的哪一步之後（例如 `Complete-FormulaColumns.ps1` 執行完之後），再考慮排入自動化。
+
+**已知限制**：需要 Node.js（COM 抽取資料後由 `build_report.js` 組出最終 HTML，vendor 端函式庫已內附在 `HTML_Report_Generator\vendor\`，不需連網）。
