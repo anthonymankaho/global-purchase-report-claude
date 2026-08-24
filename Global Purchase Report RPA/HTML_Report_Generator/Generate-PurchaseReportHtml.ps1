@@ -121,11 +121,23 @@ try {
   Write-Host "  Wrote data_sheet.json"
 
   # --- 2. Exchange Rate sheet -> native HTML export (only sheet kept as native) ---
+  # Excel's "Save As Web Page" exports every VISIBLE sheet in the workbook
+  # regardless of Worksheet.Select() - selection only changes which sheet is
+  # active, not what gets included. To get just Exchange Rate, temporarily
+  # hide every other currently-visible sheet first (safe: the workbook was
+  # opened read-only and is never saved, so these visibility changes are
+  # never written back to the source file).
   Write-Host "Exporting Exchange Rate sheet..."
-  $wb.Worksheets("Exchange Rate").Select() | Out-Null
+  $hiddenSheets = @()
+  foreach ($s in $wb.Worksheets) {
+    if ($s.Name -ne "Exchange Rate" -and $s.Visible -eq -1) {  # xlSheetVisible
+      $s.Visible = 0  # xlSheetHidden
+      $hiddenSheets += $s.Name
+    }
+  }
   $htmlPath = Join-Path $workDir "report.htm"
   $wb.SaveAs($htmlPath, 44)  # xlHtml
-  Write-Host "  Saved native export"
+  Write-Host "  Saved native export (hid: $($hiddenSheets -join ', '))"
 
   $wb.Close($false)
 } finally {
