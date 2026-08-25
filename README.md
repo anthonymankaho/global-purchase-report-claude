@@ -98,7 +98,7 @@ Global Purchase Report Claude/
 | 稽核摘要工具 | ✅ 已完成（`New-ReportAuditSummary.ps1`）|
 | 外部交付檔案流程（OUTSIDETEMP → 當月交付檔） | ✅ 已完成（`Publish-OutsideReport.ps1`：數值複製、延伸 Table1、重新整理樞紐分析表、另存新檔，含自動遞增 RV 編號）|
 | MAZ 的 PEN 匯率缺口 | 待處理（`STANDARD EXCHANGE RATE` 來源檔沒有 PEN 匯率）|
-| OUTSIDETEMP.xlsx 的 `data` 命名範圍已損壞 | 待處理（既有問題，非本次造成；影響 3 個隱藏分頁共 18 個樞紐分析表）|
+| OUTSIDETEMP.xlsx 的 `data` 命名範圍已損壞 | ✅ 已修復（2026-08-25，人工手動重建：`data` 改指向 `=Table1[#All]`；3 個隱藏分頁共 18 個樞紐分析表已實測全部重新整理成功）|
 | 第2列母版公式效能優化（2026-08） | ✅ 已完成，U/V/W/AA/AB/AG/AH 改有界範圍；修正 ITEM_CODE 前導零不一致造成的 AG/AH #N/A（用 `LET()` 正規化）；完整公式表見 SOP 第3.1節 |
 | AA/AB 改為全程人工處理（2026-08-04）| ✅ 已完成：`Build-GlobalPurchaseReport.ps1` 不再碰 AA/AB 及依賴欄位；新增 `Complete-FormulaColumns.ps1`，人工填好 AA/AB 後執行，自動檢查沒填會報錯中止，避免重演 key 不同步 #N/A 問題 |
 
