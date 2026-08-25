@@ -227,6 +227,7 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
   body.col-divider #dataTable th:nth-child(2), body.col-divider #dataTable td:nth-child(2),
   body.col-divider #dataTable th:nth-child(4), body.col-divider #dataTable td:nth-child(4),
   body.col-divider #dataTable th:nth-child(6), body.col-divider #dataTable td:nth-child(6) { border-right: 2px solid var(--border); }
+  #dataTable td:nth-child(4), #dataTable td:nth-child(6), #dataTable td:nth-child(9), #dataTable td:nth-child(10) { text-align: right; }
 
   .ms { position: relative; width: 180px; }
   .ms-toggle { width: 100%; text-align: left; padding: 5px 8px; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 12px; }
@@ -562,7 +563,17 @@ var dataTable = $('#dataTable').DataTable({
   lengthMenu: [25, 50, 100, 500, 1000], scrollX: true,
   // Group by ITEM_CODE (col 0), then within each item's DB/Vendor rows,
   // order by Avg PO Price(USD) (col 8) highest to lowest.
-  order: [[0, 'asc'], [8, 'desc']]
+  order: [[0, 'asc'], [8, 'desc']],
+  // Columns 4, 6, 9, 10 (Max/Min/Avg/Tot price) shown to 4 decimal places;
+  // sorting/filtering still use the raw numeric value, only the on-screen
+  // text is formatted.
+  columnDefs: [{
+    targets: [3, 5, 8, 9],
+    render: function (data, type) {
+      if (type === 'display' && typeof data === 'number') return data.toFixed(4);
+      return data;
+    }
+  }]
 });
 
 renderCharts();
