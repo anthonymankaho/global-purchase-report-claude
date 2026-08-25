@@ -557,7 +557,10 @@ HEADER.forEach(function (h) {
 });
 var dataTable = $('#dataTable').DataTable({
   data: [], deferRender: true, pageLength: 50,
-  lengthMenu: [25, 50, 100, 500, 1000], scrollX: true
+  lengthMenu: [25, 50, 100, 500, 1000], scrollX: true,
+  // Group by ITEM_CODE (col 0), then within each item's DB/Vendor rows,
+  // order by Avg PO Price(USD) (col 8) highest to lowest.
+  order: [[0, 'asc'], [8, 'desc']]
 });
 
 renderCharts();
