@@ -183,7 +183,7 @@ const filteredSheetsHtml = {};
 // Vendor+Price = the vendor and PO_PRICE_USD at that item's price extremes
 // across all its lines, regardless of DB/Vendor grouping.
 // =========================================================================
-const PIVOT_HEADER = ['ITEM_CODE', 'Std Part Desc', 'Max_DB', 'Max Vendor', 'Max_PO_Price(USD)', 'Min Vendor', 'Min_PO_Price(USD)', 'DB', 'Vendor', 'Avg PO Price(USD)', 'Tot PO Price(USD)'];
+const PIVOT_HEADER = ['ITEM_CODE', 'Std Part Desc', 'Max_DB', 'Max Vendor', 'Max_PO_Price(USD)', 'Min_DB', 'Min Vendor', 'Min_PO_Price(USD)', 'DB', 'Vendor', 'Avg PO Price(USD)', 'Tot PO Price(USD)'];
 
 function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthValues, stdCommValues, vendorValues, itemCodeValues, header, addColDivider) {
   const chartRowsJsonStr = neutralize(JSON.stringify(itemRows));
@@ -226,8 +226,8 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
   #exportBtn, #resetBtn { padding: 6px 14px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); }
   body.col-divider #dataTable th:nth-child(2), body.col-divider #dataTable td:nth-child(2),
   body.col-divider #dataTable th:nth-child(5), body.col-divider #dataTable td:nth-child(5),
-  body.col-divider #dataTable th:nth-child(7), body.col-divider #dataTable td:nth-child(7) { border-right: 2px solid var(--border); }
-  #dataTable td:nth-child(5), #dataTable td:nth-child(7), #dataTable td:nth-child(10), #dataTable td:nth-child(11) { text-align: right; }
+  body.col-divider #dataTable th:nth-child(8), body.col-divider #dataTable td:nth-child(8) { border-right: 2px solid var(--border); }
+  #dataTable td:nth-child(5), #dataTable td:nth-child(8), #dataTable td:nth-child(11), #dataTable td:nth-child(12) { text-align: right; }
 
   .ms { position: relative; width: 180px; }
   .ms-toggle { width: 100%; text-align: left; padding: 5px 8px; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 12px; }
@@ -296,17 +296,18 @@ var DB_COLORS = ['#005daa', '#c0392b', '#27ae60', '#e67e22', '#8e44ad', '#16a085
 // Item-level (ITEM_CODE x DB x Vendor) breakdown, computed from whatever rows
 // are passed in (i.e. already filtered by Month/DB) - Avg is quantity-weighted
 // (SUM(TOT_PO_PRICE_USD)/SUM(REC_QTY)), matching Excel's PivotTable exactly.
-// Max_DB is a new derived column (not present in the source Excel): which DB
-// the item-wide Max Vendor/Max Price transaction actually came from.
+// Max_DB/Min_DB are new derived columns (not present in the source Excel):
+// which DB the item-wide Max Vendor/Max Price (resp. Min Vendor/Min Price)
+// transaction actually came from.
 function computeItemPivot(rows) {
   var byItem = {};
   rows.forEach(function (r) {
     var item = r[3], desc = r[4], db = r[0], vendor = r[5], price = r[6], tot = r[2], qty = r[7];
-    if (!byItem[item]) byItem[item] = { desc: desc, maxPrice: -Infinity, maxVendor: null, maxDb: null, minPrice: Infinity, minVendor: null, groups: {} };
+    if (!byItem[item]) byItem[item] = { desc: desc, maxPrice: -Infinity, maxVendor: null, maxDb: null, minPrice: Infinity, minVendor: null, minDb: null, groups: {} };
     var it = byItem[item];
     if (typeof price === 'number') {
       if (price > it.maxPrice) { it.maxPrice = price; it.maxVendor = vendor; it.maxDb = db; }
-      if (price < it.minPrice) { it.minPrice = price; it.minVendor = vendor; }
+      if (price < it.minPrice) { it.minPrice = price; it.minVendor = vendor; it.minDb = db; }
     }
     var key = db + '|' + vendor;
     if (!it.groups[key]) it.groups[key] = { db: db, vendor: vendor, sumQty: 0, sumTot: 0 };
@@ -319,7 +320,7 @@ function computeItemPivot(rows) {
     var it = byItem[item];
     Object.keys(it.groups).forEach(function (key) {
       var g = it.groups[key];
-      out.push([item, it.desc, it.maxDb, it.maxVendor, it.maxPrice, it.minVendor, it.minPrice, g.db, g.vendor, g.sumQty ? g.sumTot / g.sumQty : 0, g.sumTot]);
+      out.push([item, it.desc, it.maxDb, it.maxVendor, it.maxPrice, it.minDb, it.minVendor, it.minPrice, g.db, g.vendor, g.sumQty ? g.sumTot / g.sumQty : 0, g.sumTot]);
     });
   });
   return out;
@@ -564,13 +565,13 @@ var dataTable = $('#dataTable').DataTable({
   data: [], deferRender: true, pageLength: 50,
   lengthMenu: [25, 50, 100, 500, 1000], scrollX: true,
   // Group by ITEM_CODE (col 0), then within each item's DB/Vendor rows,
-  // order by Avg PO Price(USD) (col 9) highest to lowest.
-  order: [[0, 'asc'], [9, 'desc']],
-  // Columns 5, 7, 10, 11 (Max/Min/Avg/Tot price) shown to 4 decimal places;
+  // order by Avg PO Price(USD) (col 10) highest to lowest.
+  order: [[0, 'asc'], [10, 'desc']],
+  // Columns 5, 8, 11, 12 (Max/Min/Avg/Tot price) shown to 4 decimal places;
   // sorting/filtering still use the raw numeric value, only the on-screen
   // text is formatted.
   columnDefs: [{
-    targets: [4, 6, 9, 10],
+    targets: [4, 7, 10, 11],
     render: function (data, type) {
       if (type === 'display' && typeof data === 'number') return data.toFixed(4);
       return data;
