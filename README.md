@@ -122,9 +122,9 @@ cd "C:\Users\User\Desktop\Global Purchase Report Claude\Global Purchase Report R
 .\Generate-PurchaseReportHtml.ps1
 ```
 
-不帶參數時會自動抓 `REPORT\` 裡最新的來源報表，輸出檔名依來源檔名的報表期間（如 `(1-6)2026` → `202606`）自動命名為 `FIN_Global_Purchase -Report_html_202606.html`，存回同一個 `REPORT\` 資料夾。也可用 `-SourceExcelPath` / `-OutputPath` 指定特定檔案。
+不帶參數時預設寫到固定的暫存檔 `FIN_Global_Purchase -Report_html_TEMP.html`——可以放心重複執行、反覆測試，不會動到正式的當月快照。要確認這次是要定案發布時，加上 `-Publish`，會另外把結果複製一份成當月報表期間命名的快照（如 `(1-6)2026` → `FIN_Global_Purchase -Report_html_202606.html`），存回同一個 `REPORT\` 資料夾。也可用 `-SourceExcelPath` / `-OutputPath` 指定特定檔案。（沿用專案既有的「TEMP 工作檔 + 定案才產出正式快照」慣例，避免每次測試都覆寫正式檔案。）
 
-With no parameters it auto-detects the latest source report in `REPORT\` and names the output from the source filename's reporting period (e.g. `(1-6)2026` → `202606`), saving `FIN_Global_Purchase -Report_html_202606.html` back into the same `REPORT\` folder. Pass `-SourceExcelPath` / `-OutputPath` to target a specific file instead.
+With no parameters it defaults to a fixed working file, `FIN_Global_Purchase -Report_html_TEMP.html` — safe to re-run any number of times while testing without touching the dated monthly snapshot. Add `-Publish` when you're actually finalizing this run: it additionally copies the result to a period-stamped snapshot (e.g. `(1-6)2026` → `FIN_Global_Purchase -Report_html_202606.html`) in the same `REPORT\` folder. Pass `-SourceExcelPath` / `-OutputPath` to target a specific file instead. (Follows this project's existing TEMP-working-file + publish-on-finalize convention, so test runs never overwrite the real snapshot.)
 
 > ⚠️ 目前**刻意沒有**自動接在 `Build-GlobalPurchaseReport.ps1` 後面執行：AA/AB（Max/Min PO Price）要等人工填好、確認過才算報表定稿（見上方「怎麼用」與 SOP），自動串接的話有可能拿到還沒補完的報表去產生 HTML。等確認要接在月結流程的哪一步之後，再考慮自動化串接。
 > This is **deliberately not** auto-chained onto `Build-GlobalPurchaseReport.ps1`: the report isn't final until AA/AB (Max/Min PO Price) are filled in manually and confirmed (see "How to use" above and the SOP) — auto-chaining risks generating HTML from an unfinished report. Revisit once it's clear exactly where in the monthly sequence this should trigger.

@@ -17,13 +17,22 @@
   naming pattern in the REPORT folder.
 
 .PARAMETER OutputPath
-  Path for the generated HTML file. If omitted, defaults to
-  "REPORT\FIN_Global_Purchase -Report_html_<YYYYMM>.html", where YYYYMM is
-  taken from the source file's own date stamp.
+  Path for the generated HTML file. If omitted, defaults to the fixed working
+  file "REPORT\FIN_Global_Purchase -Report_html_TEMP.html" - safe to
+  regenerate any number of times while iterating (see -Publish below).
+
+.PARAMETER Publish
+  After building, also copies the result to the dated, period-stamped
+  snapshot "REPORT\FIN_Global_Purchase -Report_html_<YYYYMM>.html" (YYYYMM
+  from the source file's own reporting period). Only do this at the actual
+  business checkpoint - not on every test run - per the incremental-report-
+  file-chaining pattern: one continuously-overwritten TEMP working file,
+  dated snapshots only when finalizing.
 #>
 param(
   [string]$SourceExcelPath,
-  [string]$OutputPath
+  [string]$OutputPath,
+  [switch]$Publish
 )
 
 $ErrorActionPreference = "Stop"
@@ -55,9 +64,11 @@ $year = $Matches[2]
 $yyyymm = "{0}{1:D2}" -f $year, $endMonth
 
 if (-not $OutputPath) {
-  $OutputPath = Join-Path $reportDir "FIN_Global_Purchase -Report_html_$yyyymm.html"
+  $OutputPath = Join-Path $reportDir "FIN_Global_Purchase -Report_html_TEMP.html"
 }
+$publishedPath = Join-Path $reportDir "FIN_Global_Purchase -Report_html_$yyyymm.html"
 Write-Host "Output: $OutputPath"
+if ($Publish) { Write-Host "Will also publish to: $publishedPath" }
 
 $workDir = Join-Path $scriptDir "_work"
 if (Test-Path $workDir) { Remove-Item $workDir -Recurse -Force }
@@ -162,3 +173,8 @@ if ($LASTEXITCODE -ne 0) {
 
 Remove-Item $workDir -Recurse -Force
 Write-Host "Done: $OutputPath"
+
+if ($Publish) {
+  Copy-Item -Path $OutputPath -Destination $publishedPath -Force
+  Write-Host "Published: $publishedPath"
+}
