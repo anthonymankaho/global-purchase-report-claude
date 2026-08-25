@@ -224,7 +224,9 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
   table.dataTable { width: 100% !important; color: var(--text); }
   th, td { white-space: nowrap; }
   #exportBtn, #resetBtn { padding: 6px 14px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); }
-  body.col-divider #dataTable th:nth-child(2), body.col-divider #dataTable td:nth-child(2) { border-right: 2px solid var(--border); }
+  body.col-divider #dataTable th:nth-child(2), body.col-divider #dataTable td:nth-child(2),
+  body.col-divider #dataTable th:nth-child(4), body.col-divider #dataTable td:nth-child(4),
+  body.col-divider #dataTable th:nth-child(6), body.col-divider #dataTable td:nth-child(6) { border-right: 2px solid var(--border); }
 
   .ms { position: relative; width: 180px; }
   .ms-toggle { width: 100%; text-align: left; padding: 5px 8px; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 12px; }
@@ -617,8 +619,10 @@ for (const f of FILTER_SHEETS) {
   // bare numeric codes) - normalize to strings so it matches the multi-select's
   // checkbox values (always strings) on both sides.
   const itemCodeValues = Array.from(new Set(itemRows.map(r => String(r[3])))).filter(Boolean).sort();
-  // TEST: divider after Std Part Desc - GLID only for now, per request.
-  const addColDivider = f.name === 'GLID';
+  // Column dividers between the 4 groups: ITEM_CODE/Std Part Desc | Max Vendor/Max
+  // Price | Min Vendor/Min Price | DB/Vendor/Avg/Tot - confirmed identical layout
+  // across all 4 pages, so applied to all of them now (no longer GLID-only).
+  const addColDivider = true;
   filteredSheetsHtml[f.name] = buildPivotPageHtml(f.name, f.stdComm.join(', '), itemRows, dbValues, monthValues, stdCommValues, vendorValues, itemCodeValues, PIVOT_HEADER, addColDivider);
   console.log(f.name + ':', itemRows.length, 'flat rows (dynamic item table + charts)');
 }
