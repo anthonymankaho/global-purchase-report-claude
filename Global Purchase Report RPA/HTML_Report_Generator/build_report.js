@@ -1,11 +1,10 @@
 const fs = require('fs');
 const path = require('path');
-const iconv = require('iconv-lite');
 
 // build_report.js <workDir> <outputHtmlPath>
 // workDir must contain data_sheet.json (Data sheet, full extraction) and
-// report.files/sheet*.htm + stylesheet.css (native export of the Exchange Rate
-// sheet only), both produced by Generate-PurchaseReportHtml.ps1 in this folder.
+// exrate_platinum_usd.json (Exchange Rate's Platium Buy Rate USD table only),
+// both produced by Generate-PurchaseReportHtml.ps1 in this folder.
 const SCRIPT_DIR = __dirname; // vendor/ (jquery, DataTables, Chart.js) lives here
 const WORK_DIR = process.argv[2];
 const OUT_PATH = process.argv[3];
@@ -14,13 +13,7 @@ if (!WORK_DIR || !OUT_PATH) {
   process.exit(1);
 }
 const DIR = WORK_DIR;
-const FILES_DIR = path.join(DIR, 'report.files');
 
-function readBig5(filePath) {
-  return iconv.decode(fs.readFileSync(filePath), 'big5');
-}
-const TABSTRIP_RE = /<!\[if !supportTabStrip\]>[\s\S]*?<!\[endif\]>\s*/g;
-function stripTabStrip(html) { return html.replace(TABSTRIP_RE, ''); }
 function toDataUri(filePath, mime) {
   return 'data:' + mime + ';base64,' + fs.readFileSync(filePath).toString('base64');
 }
@@ -57,9 +50,15 @@ const chartJs = fs.readFileSync(path.join(SCRIPT_DIR, 'vendor', 'chart.min.js'),
 // =========================================================================
 // Build a generic DataTables page for a (possibly filtered) subset of rows
 // =========================================================================
-function buildDataTablesHtml(header, rows, title) {
+function buildDataTablesHtml(header, rows, title, scrollX, decimalCols) {
+  if (scrollX === undefined) scrollX = true;
   const headerJsonStr = neutralize(JSON.stringify(header));
   const rowsJsonStr = neutralize(JSON.stringify(rows));
+  // decimalCols: column indices to always show to 4 decimal places (e.g. rate
+  // tables), while sorting/filtering still use the raw numeric value.
+  const columnDefsStr = (decimalCols && decimalCols.length)
+    ? `[{ targets: ${JSON.stringify(decimalCols)}, render: function (data, type) { if (type === 'display' && typeof data === 'number') return data.toFixed(4); return data; } }]`
+    : '[]';
   return `<!doctype html>
 <html>
 <head>
@@ -77,7 +76,7 @@ body[data-theme="dark"] {
   --input-bg: #1f232b; --hover-bg: #2f3440;
 }
 body { font-family: Calibri, Arial, sans-serif; font-size: 12px; margin: 8px; background: var(--bg); color: var(--text); }
-table.dataTable { width: 100% !important; color: var(--text); }
+table.dataTable { color: var(--text); }
 th, td { white-space: nowrap; }
 .summary-bar { margin-bottom: 8px; font-weight: bold; color: var(--accent); }
 #exportBtn { padding: 6px 14px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); }
@@ -106,7 +105,7 @@ body[data-theme="dark"] .dataTables_wrapper .dataTables_paginate .paginate_butto
 <body>
 <div class="summary-bar">${title} - ${rows.length.toLocaleString()} rows</div>
 <button id="exportBtn">Export CSV (filtered)</button>
-<table id="dataTable" class="display" style="width:100%">
+<table id="dataTable" class="display">
   <thead><tr id="dataTableHeadRow"></tr></thead>
   <tbody></tbody>
 </table>
@@ -129,7 +128,8 @@ $(function () {
   });
   var table = $('#dataTable').DataTable({
     data: ROWS, deferRender: true, pageLength: 50,
-    lengthMenu: [25, 50, 100, 500, 1000], scrollX: true
+    lengthMenu: [25, 50, 100, 500, 1000], scrollX: ${scrollX ? 'true' : 'false'}, autoWidth: false,
+    columnDefs: ${columnDefsStr}
   });
   document.getElementById('exportBtn').onclick = function () {
     var rowsData = table.rows({ search: 'applied' }).data();
@@ -183,15 +183,16 @@ const filteredSheetsHtml = {};
 // Vendor+Price = the vendor and PO_PRICE_USD at that item's price extremes
 // across all its lines, regardless of DB/Vendor grouping.
 // =========================================================================
-const PIVOT_HEADER = ['ITEM_CODE', 'Std Part Desc', 'Max_DB', 'Max Vendor', 'Max_PO_Price(USD)', 'Min_DB', 'Min Vendor', 'Min_PO_Price(USD)', 'DB', 'Vendor', 'Avg PO Price(USD)', 'Tot PO Price(USD)'];
+const PIVOT_HEADER = ['ITEM_CODE', 'Std Part Desc', 'Max_DB', 'Max Vendor', 'Max_PO_Price(USD)', 'Min_DB', 'Min Vendor', 'Min_PO_Price(USD)', '', 'DB', 'Vendor', 'Avg PO Price(USD)', 'Tot PO Price(USD)'];
 
-function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthValues, stdCommValues, vendorValues, itemCodeValues, header, addColDivider) {
+function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthValues, stdCommValues, vendorValues, itemCodeValues, statusValues, header, addColDivider) {
   const chartRowsJsonStr = neutralize(JSON.stringify(itemRows));
   const dbValuesJsonStr = neutralize(JSON.stringify(dbValues));
   const monthValuesJsonStr = neutralize(JSON.stringify(monthValues));
   const stdCommValuesJsonStr = neutralize(JSON.stringify(stdCommValues));
   const vendorValuesJsonStr = neutralize(JSON.stringify(vendorValues));
   const itemCodeValuesJsonStr = neutralize(JSON.stringify(itemCodeValues));
+  const statusValuesJsonStr = neutralize(JSON.stringify(statusValues));
   const headerJsonStr = neutralize(JSON.stringify(header));
 
   return `<!doctype html>
@@ -221,19 +222,22 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
   .chart-box { background: var(--card-bg); padding: 12px; border-radius: 6px; box-shadow: 0 1px 3px var(--shadow); flex: 1; min-width: 420px; }
   canvas { max-height: 300px; }
   .table-box { background: var(--card-bg); padding: 12px; border-radius: 6px; box-shadow: 0 1px 3px var(--shadow); }
-  table.dataTable { width: 100% !important; color: var(--text); }
+  table.dataTable { color: var(--text); }
   th, td { white-space: nowrap; }
   #exportBtn, #resetBtn { padding: 6px 14px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); }
   body.col-divider #dataTable th:nth-child(2), body.col-divider #dataTable td:nth-child(2),
   body.col-divider #dataTable th:nth-child(5), body.col-divider #dataTable td:nth-child(5),
   body.col-divider #dataTable th:nth-child(8), body.col-divider #dataTable td:nth-child(8) { border-right: 2px solid var(--border); }
-  #dataTable td:nth-child(5), #dataTable td:nth-child(8), #dataTable td:nth-child(11), #dataTable td:nth-child(12) { text-align: right; }
+  #dataTable td:nth-child(5), #dataTable td:nth-child(8), #dataTable td:nth-child(12), #dataTable td:nth-child(13) { text-align: right; }
+  #dataTable th:nth-child(9), #dataTable td:nth-child(9) { text-align: center; }
 
   .ms { position: relative; width: 180px; }
   .ms-toggle { width: 100%; text-align: left; padding: 5px 8px; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 12px; }
   .ms-panel { position: absolute; z-index: 20; top: 100%; left: 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; box-shadow: 0 2px 8px var(--shadow); max-height: 260px; overflow-y: auto; width: 240px; padding: 6px; }
   .ms-panel label { display: block; font-size: 12px; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
   .ms-panel label.ms-all-row { border-bottom: 1px solid var(--border-light); margin-bottom: 4px; padding-bottom: 6px; font-weight: bold; }
+  .item-toggle { cursor: pointer; display: inline-block; width: 16px; text-align: center; border: 1px solid var(--border); border-radius: 2px; font-weight: bold; user-select: none; }
+  .item-toggle:hover { background: var(--hover-bg); }
 
   body[data-theme="dark"] table.dataTable tbody tr { background-color: var(--card-bg); color: var(--text); }
   body[data-theme="dark"] table.dataTable tbody tr.odd,
@@ -258,7 +262,7 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
 </head>
 <body class="${addColDivider ? 'col-divider' : ''}">
 <div class="page-header">
-  <h3>${pageName} - Std Comm: ${stdCommLabel} (Consider)</h3>
+  <h3>${pageName} - Std Comm: ${stdCommLabel}</h3>
 </div>
 <div class="filters">
   <div><label class="fl">Month</label><div class="ms" id="ms-month"></div></div>
@@ -266,6 +270,7 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
   <div><label class="fl">Std Comm</label><div class="ms" id="ms-stdcomm"></div></div>
   <div><label class="fl">Std Vendor Name</label><div class="ms" id="ms-vendor"></div></div>
   <div><label class="fl">Item Code</label><div class="ms" id="ms-itemcode"></div></div>
+  <div><label class="fl">Ignore / Consider</label><div class="ms" id="ms-status"></div></div>
   <div style="align-self:flex-end"><button id="resetBtn">Reset filters</button></div>
 </div>
 <div class="charts">
@@ -275,7 +280,7 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
 <div class="table-box">
   <div class="summary-bar" id="tableSummary"></div>
   <button id="exportBtn">Export CSV (filtered)</button>
-  <table id="dataTable" class="display" style="width:100%">
+  <table id="dataTable" class="display">
     <thead><tr id="dataTableHeadRow"></tr></thead>
     <tbody></tbody>
   </table>
@@ -284,14 +289,20 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
 <script>${dataTablesJs}</script>
 <script>${chartJs}</script>
 <script>
-var CHART_ROWS = ${chartRowsJsonStr}; // [DB, month, TOT_PO_PRICE_USD, ITEM_CODE, Std Part Desc, Std Vendor Name, PO_PRICE_USD, REC_QTY, Std Comm]
+var CHART_ROWS = ${chartRowsJsonStr}; // [DB, month, TOT_PO_PRICE_USD, ITEM_CODE, Std Part Desc, Std Vendor Name, PO_PRICE_USD, REC_QTY, Std Comm, ignore/consider]
 var DB_VALUES = ${dbValuesJsonStr};
 var MONTH_VALUES = ${monthValuesJsonStr};
 var STDCOMM_VALUES = ${stdCommValuesJsonStr};
 var VENDOR_VALUES = ${vendorValuesJsonStr};
 var ITEMCODE_VALUES = ${itemCodeValuesJsonStr};
+var STATUS_VALUES = ${statusValuesJsonStr};
 var HEADER = ${headerJsonStr};
 var DB_COLORS = ['#005daa', '#c0392b', '#27ae60', '#e67e22', '#8e44ad', '#16a085', '#d35400', '#7f8c8d'];
+// Fixed DB -> color mapping (by full DB_VALUES list, not by whatever subset happens
+// to be present after filtering) so the same DB always gets the same color across
+// the bar chart, the pie chart, and between filter changes.
+var DB_COLOR_MAP = {};
+DB_VALUES.slice().sort().forEach(function (db, i) { DB_COLOR_MAP[db] = DB_COLORS[i % DB_COLORS.length]; });
 
 // Item-level (ITEM_CODE x DB x Vendor) breakdown, computed from whatever rows
 // are passed in (i.e. already filtered by Month/DB) - Avg is quantity-weighted
@@ -320,13 +331,13 @@ function computeItemPivot(rows) {
     var it = byItem[item];
     Object.keys(it.groups).forEach(function (key) {
       var g = it.groups[key];
-      out.push([item, it.desc, it.maxDb, it.maxVendor, it.maxPrice, it.minDb, it.minVendor, it.minPrice, g.db, g.vendor, g.sumQty ? g.sumTot / g.sumQty : 0, g.sumTot]);
+      out.push([item, it.desc, it.maxDb, it.maxVendor, it.maxPrice, it.minDb, it.minVendor, it.minPrice, null, g.db, g.vendor, g.sumQty ? g.sumTot / g.sumQty : 0, g.sumTot]);
     });
   });
   return out;
 }
 
-function createMultiSelect(containerId, values, onChange) {
+function createMultiSelect(containerId, values, onChange, defaultSelected, labelMap) {
   var container = document.getElementById(containerId);
   var selected = new Set();
   var toggle = document.createElement('button');
@@ -344,29 +355,44 @@ function createMultiSelect(containerId, values, onChange) {
   allRow.className = 'ms-all-row';
   var allCb = document.createElement('input');
   allCb.type = 'checkbox';
-  allCb.checked = true;
   allRow.appendChild(allCb);
   allRow.appendChild(document.createTextNode(' (Select All)'));
   panel.appendChild(allRow);
 
+  // Normally every checkbox starts checked (no filtering). A caller can instead
+  // pass defaultSelected (e.g. Ignore/Consider defaulting to just "Consider",
+  // matching the report's historical Consider-only scope) to start with only
+  // that subset checked. labelMap lets a caller show a friendlier description
+  // while the checkbox's own value - what filtering matches against - stays
+  // the raw underlying value.
   var checkboxes = [];
   values.forEach(function (v) {
     var row = document.createElement('label');
     var cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.value = v;
-    cb.checked = true;
+    cb.checked = !defaultSelected || defaultSelected.indexOf(v) !== -1;
     row.appendChild(cb);
-    row.appendChild(document.createTextNode(' ' + v));
+    row.appendChild(document.createTextNode(' ' + (labelMap && labelMap[v] ? labelMap[v] : v)));
     panel.appendChild(row);
     checkboxes.push(cb);
   });
+  var initCheckedOnes = checkboxes.filter(function (c) { return c.checked; });
+  if (initCheckedOnes.length === checkboxes.length || initCheckedOnes.length === 0) {
+    selected = new Set();
+    allCb.checked = true;
+  } else {
+    selected = new Set(initCheckedOnes.map(function (c) { return c.value; }));
+    allCb.checked = false;
+  }
+
+  function displayLabel(v) { return (labelMap && labelMap[v]) ? labelMap[v] : v; }
 
   function updateToggleText() {
     if (selected.size === 0 || selected.size === values.length) {
       toggle.textContent = 'All ▾';
     } else if (selected.size === 1) {
-      toggle.textContent = Array.from(selected)[0] + ' ▾';
+      toggle.textContent = displayLabel(Array.from(selected)[0]) + ' ▾';
     } else {
       toggle.textContent = selected.size + ' selected ▾';
     }
@@ -446,6 +472,48 @@ var msDb = createMultiSelect('ms-db', DB_VALUES, function () { renderCharts(); }
 var msStdComm = createMultiSelect('ms-stdcomm', STDCOMM_VALUES, function () { renderCharts(); });
 var msVendor = createMultiSelect('ms-vendor', VENDOR_VALUES, function () { renderCharts(); });
 var msItemCode = createMultiSelect('ms-itemcode', ITEMCODE_VALUES, function () { renderCharts(); });
+// Mirrors Excel's PivotTable "ignore / consider" page filter - defaults to
+// Consider only (this report's historical scope), but Ignore and (All) are
+// selectable here just like in the Excel PivotTable.
+// Ignore/Consider are internal jargon - show what they actually mean.
+var msStatus = createMultiSelect('ms-status', STATUS_VALUES, function () { renderCharts(); }, ['Consider'], {
+  Ignore: 'Ignore (Intercompany transaction)',
+  Consider: 'Consider (Real transaction)'
+});
+
+// Per-item collapse state for the DB/Vendor/Avg/Tot breakdown rows: an item with
+// multiple DB/Vendor sub-rows can be collapsed down to just its top (highest Avg
+// PO Price(USD)) sub-row via the +/- toggle column rendered right before DB.
+var collapsedItems = new Set();
+var itemGroupCount = {};
+var lastFilteredRows = [];
+
+function redrawTable() {
+  var allTableRows = computeItemPivot(lastFilteredRows);
+  itemGroupCount = {};
+  var maxAvgByItem = {};
+  allTableRows.forEach(function (r) {
+    var item = r[0], avg = r[11];
+    itemGroupCount[item] = (itemGroupCount[item] || 0) + 1;
+    if (!(item in maxAvgByItem) || avg > maxAvgByItem[item]) maxAvgByItem[item] = avg;
+  });
+  var tableRows = allTableRows.filter(function (r) {
+    return !collapsedItems.has(r[0]) || r[11] === maxAvgByItem[r[0]];
+  });
+  document.getElementById('tableSummary').textContent = '${pageName} (Std Comm: ${stdCommLabel}) - ' + tableRows.length.toLocaleString() + ' rows';
+  dataTable.clear();
+  dataTable.rows.add(tableRows);
+  dataTable.draw();
+
+  var masterBtn = document.getElementById('collapseAllBtn');
+  if (masterBtn) {
+    var anyExpanded = Object.keys(itemGroupCount).some(function (item) {
+      return itemGroupCount[item] > 1 && !collapsedItems.has(item);
+    });
+    masterBtn.textContent = anyExpanded ? '−' : '+';
+    masterBtn.title = anyExpanded ? 'Collapse all items' : 'Expand all items';
+  }
+}
 
 var charts = {};
 function renderCharts() {
@@ -455,8 +523,9 @@ function renderCharts() {
   var selStdComm = msStdComm.getSelected();
   var selVendor = msVendor.getSelected();
   var selItemCode = msItemCode.getSelected();
+  var selStatus = msStatus.getSelected();
   var rows = CHART_ROWS.filter(function (r) {
-    return matchesFilter(r[1], selMonth) && matchesFilter(r[0], selDb) && matchesFilter(r[8], selStdComm) && matchesFilter(r[5], selVendor) && matchesFilter(String(r[3]), selItemCode);
+    return matchesFilter(r[1], selMonth) && matchesFilter(r[0], selDb) && matchesFilter(r[8], selStdComm) && matchesFilter(r[5], selVendor) && matchesFilter(String(r[3]), selItemCode) && matchesFilter(r[9], selStatus);
   });
 
   // Chart 1: By Month (GLID) - Total line + shadow bars per DB
@@ -467,7 +536,7 @@ function renderCharts() {
 
   var datasets = dbEntitiesPresent.map(function (db, i) {
     var byMonth = monthByDbSum[db] || {};
-    var c = DB_COLORS[i % DB_COLORS.length];
+    var c = DB_COLOR_MAP[db] || DB_COLORS[i % DB_COLORS.length];
     return {
       type: 'bar', label: db,
       data: monthLabels.map(function (m) { return byMonth[m] || 0; }),
@@ -517,7 +586,7 @@ function renderCharts() {
       labels: dbLabels,
       datasets: [{
         data: dbLabels.map(function (l) { return dbSum[l]; }),
-        backgroundColor: dbLabels.map(function (l, i) { return DB_COLORS[i % DB_COLORS.length]; })
+        backgroundColor: dbLabels.map(function (l, i) { return DB_COLOR_MAP[l] || DB_COLORS[i % DB_COLORS.length]; })
       }]
     },
     options: {
@@ -540,11 +609,8 @@ function renderCharts() {
 
   // Item-level (ITEM_CODE x DB x Vendor) breakdown table - recomputed from the
   // same filtered rows as the charts, so Month/DB filters apply here too.
-  var tableRows = computeItemPivot(rows);
-  document.getElementById('tableSummary').textContent = '${pageName} (Std Comm: ${stdCommLabel}) - ' + tableRows.length.toLocaleString() + ' rows';
-  dataTable.clear();
-  dataTable.rows.add(tableRows);
-  dataTable.draw();
+  lastFilteredRows = rows;
+  redrawTable();
 }
 
 // Theme is controlled by the outer report shell (single global toggle), which
@@ -558,20 +624,51 @@ function applyTheme(theme) {
 var headRow = document.getElementById('dataTableHeadRow');
 HEADER.forEach(function (h) {
   var th = document.createElement('th');
-  th.textContent = h;
+  th.appendChild(document.createTextNode(h));
+  if (h === 'DB') {
+    var masterBtn = document.createElement('span');
+    masterBtn.id = 'collapseAllBtn';
+    masterBtn.className = 'item-toggle';
+    masterBtn.style.marginLeft = '6px';
+    masterBtn.textContent = '−';
+    masterBtn.title = 'Collapse all items';
+    th.appendChild(masterBtn);
+  }
   headRow.appendChild(th);
 });
 var dataTable = $('#dataTable').DataTable({
   data: [], deferRender: true, pageLength: 50,
-  lengthMenu: [25, 50, 100, 500, 1000], scrollX: true,
+  // scrollX off and autoWidth off: this table's 13 columns fit comfortably
+  // without horizontal scroll, and scrollX's header/body column-width sync
+  // (two separate DOM tables kept aligned via JS-computed widths, same as
+  // the bug found and fixed on the Exchange Rate table) intermittently
+  // miscalculated the ITEM_CODE column's width, spilling its nowrap text
+  // into the next column. Relying on the browser's own table layout instead
+  // is deterministic and immune to that failure mode.
+  lengthMenu: [25, 50, 100, 500, 1000], scrollX: false, autoWidth: false,
   // Group by ITEM_CODE (col 0), then within each item's DB/Vendor rows,
-  // order by Avg PO Price(USD) (col 10) highest to lowest.
-  order: [[0, 'asc'], [10, 'desc']],
-  // Columns 5, 8, 11, 12 (Max/Min/Avg/Tot price) shown to 4 decimal places;
+  // order by Avg PO Price(USD) (col 11) highest to lowest.
+  order: [[0, 'asc'], [11, 'desc']],
+  // Columns 5, 8, 12, 13 (Max/Min/Avg/Tot price) shown to 4 decimal places;
   // sorting/filtering still use the raw numeric value, only the on-screen
   // text is formatted.
   columnDefs: [{
-    targets: [4, 7, 10, 11],
+    // Own +/- column (col 9, right before DB) - not part of the source data
+    // (always null), so it's rendered purely from the row's ITEM_CODE (row[0]).
+    targets: [8],
+    orderable: false,
+    searchable: false,
+    render: function (data, type, row) {
+      if (type !== 'display') return '';
+      var item = row[0];
+      var count = itemGroupCount[item] || 1;
+      if (count <= 1) return '';
+      var collapsed = collapsedItems.has(item);
+      var icon = collapsed ? '+' : '−';
+      return '<span class="item-toggle" title="' + (collapsed ? 'Expand' : 'Collapse') + ' ' + count + ' DB/Vendor rows">' + icon + '</span>';
+    }
+  }, {
+    targets: [4, 7, 11, 12],
     render: function (data, type) {
       if (type === 'display' && typeof data === 'number') return data.toFixed(4);
       return data;
@@ -579,10 +676,34 @@ var dataTable = $('#dataTable').DataTable({
   }]
 });
 
+$('#dataTable tbody').on('click', '.item-toggle', function (e) {
+  e.stopPropagation();
+  var tr = $(this).closest('tr');
+  var item = dataTable.row(tr).data()[0];
+  if (collapsedItems.has(item)) collapsedItems.delete(item); else collapsedItems.add(item);
+  redrawTable();
+});
+
+// Master +/- in the DB header: collapse every multi-row item at once ('close'),
+// or clear all collapses at once ('release'/expand all). The icon reflects the
+// action the next click performs, same convention as the per-row toggle.
+document.getElementById('collapseAllBtn').addEventListener('click', function (e) {
+  e.stopPropagation();
+  var expandAll = this.textContent === '+';
+  if (expandAll) {
+    collapsedItems.clear();
+  } else {
+    Object.keys(itemGroupCount).forEach(function (item) {
+      if (itemGroupCount[item] > 1) collapsedItems.add(item);
+    });
+  }
+  redrawTable();
+});
+
 renderCharts();
 
 document.getElementById('resetBtn').onclick = function () {
-  msMonth.reset(); msDb.reset(); msStdComm.reset(); msVendor.reset(); msItemCode.reset();
+  msMonth.reset(); msDb.reset(); msStdComm.reset(); msVendor.reset(); msItemCode.reset(); msStatus.reset();
   renderCharts();
 };
 
@@ -613,17 +734,20 @@ document.getElementById('exportBtn').onclick = function () {
 
 for (const f of FILTER_SHEETS) {
   const set = new Set(f.stdComm);
-  const flatRows = dataSheet.rows.filter(r => set.has(r[stdCommIdx]) && r[statusIdx] === 'Consider');
-  // rows: [DB, month, totUsd, ITEM_CODE, Std Part Desc, Std Vendor Name, PO_PRICE_USD, REC_QTY, Std Comm]
+  // No longer hard-filtered to 'Consider' here - the Ignore/Consider split is now
+  // a client-side filter (mirroring Excel's own PivotTable "ignore / consider"
+  // page filter), defaulting to Consider only so today's scope is unchanged.
+  const flatRows = dataSheet.rows.filter(r => set.has(r[stdCommIdx]));
+  // rows: [DB, month, totUsd, ITEM_CODE, Std Part Desc, Std Vendor Name, PO_PRICE_USD, REC_QTY, Std Comm, ignore/consider]
   // (0,1,2 feed the charts; 3-8 feed the dynamic item-level table computed client-side
   // from these live rows, so all filters apply here too instead of relying on Excel's
-  // static, already-all-months-aggregated pivot cache)
+  // static, already-all-months-aggregated pivot cache; 9 is filter-only, like 0/1/5/8)
   const itemRows = flatRows.map(r => [
     r[COL['DB']], r[COL['yyyy-mm']], typeof r[COL['TOT_PO_PRICE_USD']] === 'number' ? r[COL['TOT_PO_PRICE_USD']] : 0,
     r[COL['ITEM_CODE']], r[COL['Std Part Desc']], r[COL['Std Vendor Name']],
     typeof r[COL['PO_PRICE_USD']] === 'number' ? r[COL['PO_PRICE_USD']] : null,
     typeof r[COL['REC_QTY']] === 'number' ? r[COL['REC_QTY']] : 0,
-    r[COL['Std Comm']]
+    r[COL['Std Comm']], r[statusIdx]
   ]);
   const dbValues = Array.from(new Set(itemRows.map(r => r[0]))).filter(Boolean).sort();
   const monthValues = Array.from(new Set(itemRows.map(r => r[1]))).filter(Boolean).sort();
@@ -633,11 +757,12 @@ for (const f of FILTER_SHEETS) {
   // bare numeric codes) - normalize to strings so it matches the multi-select's
   // checkbox values (always strings) on both sides.
   const itemCodeValues = Array.from(new Set(itemRows.map(r => String(r[3])))).filter(Boolean).sort();
+  const statusValues = Array.from(new Set(itemRows.map(r => r[9]))).filter(Boolean).sort();
   // Column dividers between the 4 groups: ITEM_CODE/Std Part Desc | Max Vendor/Max
   // Price | Min Vendor/Min Price | DB/Vendor/Avg/Tot - confirmed identical layout
   // across all 4 pages, so applied to all of them now (no longer GLID-only).
   const addColDivider = true;
-  filteredSheetsHtml[f.name] = buildPivotPageHtml(f.name, f.stdComm.join(', '), itemRows, dbValues, monthValues, stdCommValues, vendorValues, itemCodeValues, PIVOT_HEADER, addColDivider);
+  filteredSheetsHtml[f.name] = buildPivotPageHtml(f.name, f.stdComm.join(', '), itemRows, dbValues, monthValues, stdCommValues, vendorValues, itemCodeValues, statusValues, PIVOT_HEADER, addColDivider);
   console.log(f.name + ':', itemRows.length, 'flat rows (dynamic item table + charts)');
 }
 
@@ -716,7 +841,7 @@ const dashboardHtml = `<!doctype html>
   .ms-panel { position: absolute; z-index: 20; top: 100%; left: 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; box-shadow: 0 2px 8px var(--shadow); max-height: 260px; overflow-y: auto; width: 240px; padding: 6px; }
   .ms-panel label { display: block; font-size: 12px; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
   .ms-panel label.ms-all-row { border-bottom: 1px solid var(--border-light); margin-bottom: 4px; padding-bottom: 6px; font-weight: bold; }
-  table.dataTable { width: 100% !important; font-size: 12px; color: var(--text); }
+  table.dataTable { font-size: 12px; color: var(--text); }
 
   /* dark-mode overrides for DataTables' own chrome */
   body[data-theme="dark"] table.dataTable tbody tr { background-color: var(--card-bg); color: var(--text); }
@@ -768,7 +893,7 @@ const dashboardHtml = `<!doctype html>
 </div>
 <div class="table-box">
   <h3>By Vendor (Std Vendor Name)</h3>
-  <table id="vendorTable" class="display" style="width:100%">
+  <table id="vendorTable" class="display">
     <thead><tr><th>Std Vendor Name</th><th>Sum of TOT_PO_PRICE_USD</th><th>Weight %</th><th>Sum of REC_QTY</th><th>Weight %</th><th>Count of PO_NO</th><th>Weight %</th></tr></thead>
     <tbody></tbody>
   </table>
@@ -787,7 +912,7 @@ var VENDOR_VALUES = ${vendorValuesJsonStr};
 
 // ---- Reusable multi-select widget: All / one / multi ----
 // getSelected() returns [] to mean "All" (no filter applied).
-function createMultiSelect(containerId, values, onChange) {
+function createMultiSelect(containerId, values, onChange, labelMap) {
   var container = document.getElementById(containerId);
   var selected = new Set(); // empty = All
 
@@ -811,6 +936,9 @@ function createMultiSelect(containerId, values, onChange) {
   allRow.appendChild(document.createTextNode(' (Select All)'));
   panel.appendChild(allRow);
 
+  // labelMap lets a caller (e.g. Status: Ignore/Consider) show a friendlier
+  // description while the checkbox's own value - what filtering matches
+  // against - stays the raw underlying value.
   var checkboxes = [];
   values.forEach(function (v) {
     var row = document.createElement('label');
@@ -819,16 +947,18 @@ function createMultiSelect(containerId, values, onChange) {
     cb.value = v;
     cb.checked = true;
     row.appendChild(cb);
-    row.appendChild(document.createTextNode(' ' + v));
+    row.appendChild(document.createTextNode(' ' + (labelMap && labelMap[v] ? labelMap[v] : v)));
     panel.appendChild(row);
     checkboxes.push(cb);
   });
+
+  function displayLabel(v) { return (labelMap && labelMap[v]) ? labelMap[v] : v; }
 
   function updateToggleText() {
     if (selected.size === 0 || selected.size === values.length) {
       toggle.textContent = 'All ▾';
     } else if (selected.size === 1) {
-      toggle.textContent = Array.from(selected)[0] + ' ▾';
+      toggle.textContent = displayLabel(Array.from(selected)[0]) + ' ▾';
     } else {
       toggle.textContent = selected.size + ' selected ▾';
     }
@@ -890,7 +1020,11 @@ function onFilterChange() { render(); }
 msDb = createMultiSelect('ms-db', DB_VALUES, onFilterChange);
 msMonth = createMultiSelect('ms-month', MONTH_VALUES, onFilterChange);
 msStdComm = createMultiSelect('ms-stdcomm', STDCOMM_VALUES, onFilterChange);
-msStatus = createMultiSelect('ms-status', STATUS_VALUES, onFilterChange);
+// Ignore/Consider are internal jargon - show what they actually mean.
+msStatus = createMultiSelect('ms-status', STATUS_VALUES, onFilterChange, {
+  Ignore: 'Ignore (Intercompany transaction)',
+  Consider: 'Consider (Real transaction)'
+});
 msVendor = createMultiSelect('ms-vendor', VENDOR_VALUES, onFilterChange);
 
 var charts = {};
@@ -976,6 +1110,12 @@ function render() {
   var dbByMonthSum = groupSumTwoKeys(rows, 1, 0, 4); // { month: { db: sum } }
   var MONTH_COLORS = ['#005daa', '#c0392b', '#27ae60', '#e67e22', '#8e44ad', '#16a085', '#d35400', '#7f8c8d'];
   var DB_COLORS = ['#005daa', '#c0392b', '#27ae60', '#e67e22', '#8e44ad', '#16a085', '#d35400', '#7f8c8d'];
+  // Fixed DB -> color mapping (by full DB_VALUES list, not by whatever subset happens
+  // to be present after filtering, and not by a value-sorted order) so the same DB
+  // always gets the same color across the DB pie, the timeline chart, and the Std
+  // Comm chart below, and stays stable across filter changes.
+  var DB_COLOR_MAP = {};
+  DB_VALUES.slice().sort().forEach(function (db, i) { DB_COLOR_MAP[db] = DB_COLORS[i % DB_COLORS.length]; });
 
   var dbChartDatasets = monthsPresent.map(function (m, i) {
     var byDb = dbByMonthSum[m] || {};
@@ -1038,7 +1178,7 @@ function render() {
       labels: dbLabels,
       datasets: [{
         data: dbLabels.map(function (l) { return dbSumUsd[l]; }),
-        backgroundColor: dbLabels.map(function (l, i) { return DB_COLORS[i % DB_COLORS.length]; })
+        backgroundColor: dbLabels.map(function (l, i) { return DB_COLOR_MAP[l] || DB_COLORS[i % DB_COLORS.length]; })
       }]
     },
     options: {
@@ -1070,7 +1210,7 @@ function render() {
 
   var timelineDatasets = dbEntitiesPresent.map(function (db, i) {
     var byMonth = monthByDbSum[db] || {};
-    var c = DB_COLORS[i % DB_COLORS.length];
+    var c = DB_COLOR_MAP[db] || DB_COLORS[i % DB_COLORS.length];
     return {
       type: 'bar',
       label: db,
@@ -1136,7 +1276,7 @@ function render() {
 
   var scChartDatasets = dbEntitiesPresent.map(function (db, i) {
     var byGroup = scByDbSum[db] || {};
-    var c = DB_COLORS[i % DB_COLORS.length];
+    var c = DB_COLOR_MAP[db] || DB_COLORS[i % DB_COLORS.length];
     return {
       type: 'bar',
       label: db,
@@ -1212,6 +1352,7 @@ function render() {
       data: vendorTableData,
       pageLength: 10,
       lengthMenu: [10, 25, 50, 100],
+      autoWidth: false,
       order: [[1, 'desc']],
       columns: [
         { title: 'Std Vendor Name' },
@@ -1253,41 +1394,23 @@ const dataSheetHtml = buildDataTablesHtml(H, dataSheet.rows, 'Data');
 console.log('Data sheet built (' + (dataSheetHtml.length / 1024 / 1024).toFixed(2) + ' MB)');
 
 // =========================================================================
-// Exchange Rate: keep native export (unchanged approach from build.js)
+// Exchange Rate: only the "Platium Buy Rate : Foreign Currency => USD" table
+// is kept (the HKD-rate table next to it is dropped per user decision), and
+// it's rendered the same way as the Data sheet - a DataTables page with
+// sorting/search/CSV export - instead of Excel's raw native HTML export.
 // =========================================================================
-const stylesheetCss = readBig5(path.join(FILES_DIR, 'stylesheet.css'));
-// Only the Exchange Rate sheet is exported natively (see Generate-PurchaseReportHtml.ps1),
-// so it's whichever single sheetNNN.htm Excel produced, not a fixed sheet006.htm.
-const exRateSheetFile = fs.readdirSync(FILES_DIR).find(f => /^sheet\d+\.htm$/i.test(f));
-if (!exRateSheetFile) throw new Error('No sheetNNN.htm found in ' + FILES_DIR);
-let exRateHtml = readBig5(path.join(FILES_DIR, exRateSheetFile));
-exRateHtml = stripTabStrip(exRateHtml);
-exRateHtml = exRateHtml.replace(/<link rel=Stylesheet href=stylesheet\.css>/i, '<style>' + stylesheetCss + '</style>');
-// Dark mode for this native Excel export: a generic color-invert filter (its
-// internal markup/classes are Excel-generated and not something we author),
-// re-inverting images so any logos/photos still render normally.
-// Two things had to be fixed, found via bisecting a minimal reproduction:
-// 1. The filter goes on <html>, not <body>: when <html> has no background of
-//    its own, the browser propagates <body>'s background to paint the root/
-//    canvas layer *outside* body's own filterable render box, so a filter on
-//    body alone never touches it.
-// 2. Excel's export never sets an explicit background anywhere (neither on
-//    <html> nor <body>) - it just relies on the browser's own default white
-//    canvas fill, which is *not* part of any element's paintable layer and so
-//    cannot be affected by ANY css filter. The html[data-theme="dark"] rule
-//    must set its own `background` so there's an actual painted layer for
-//    the filter to invert, instead of leaving that fallback canvas showing
-//    through unfiltered.
-const exRateDarkModeInjection = `
-<style>
-  html[data-theme="dark"] { filter: invert(0.92) hue-rotate(180deg); background: #fff; }
-  html[data-theme="dark"] img { filter: invert(1) hue-rotate(180deg); }
-</style>
-<script>function applyTheme(theme) { document.documentElement.setAttribute('data-theme', theme); document.body.setAttribute('data-theme', theme); }</script>
-`;
-exRateHtml = /<\/body>/i.test(exRateHtml)
-  ? exRateHtml.replace(/<\/body>/i, exRateDarkModeInjection + '</body>')
-  : exRateHtml + exRateDarkModeInjection;
+let exRateJsonRaw = fs.readFileSync(path.join(DIR, 'exrate_platinum_usd.json'), 'utf8');
+if (exRateJsonRaw.charCodeAt(0) === 0xFEFF) exRateJsonRaw = exRateJsonRaw.slice(1);
+const exRateData = JSON.parse(exRateJsonRaw);
+// scrollX disabled: unlike the 36-column Data sheet, this table's 12 columns
+// fit comfortably without horizontal scrolling, and scrollX's header/body
+// column-width sync (two separate DOM tables kept aligned via JS-computed
+// widths) misaligned header text against data columns for a table this narrow.
+// All 11 rate columns (everything but yyyy-mm at index 0) shown to 4 decimal
+// places, matching the same convention used for the price columns elsewhere
+// in this report.
+const exRateDecimalCols = exRateData.header.map((h, i) => i).filter(i => i > 0);
+const exRateHtml = buildDataTablesHtml(exRateData.header, exRateData.rows, 'Exchange Rate', false, exRateDecimalCols);
 
 // =========================================================================
 // Assemble final combined file

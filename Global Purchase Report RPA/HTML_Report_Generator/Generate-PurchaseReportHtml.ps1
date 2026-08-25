@@ -6,9 +6,10 @@
 .DESCRIPTION
   1. Opens the source workbook read-only via Excel COM.
   2. Extracts the full Data sheet to JSON.
-  3. Natively exports only the Exchange Rate sheet to HTML (the other tabs -
-     Dashboard, GLID, Fittings, Packaging, Coating - are built from the Data
-     JSON directly by build_report.js, not from a native Excel export).
+  3. Extracts only the "Platium Buy Rate : Foreign Currency => USD" table from
+     the Exchange Rate sheet to JSON (the HKD-rate table is not kept) - like
+     the other tabs, this is rendered by build_report.js as a DataTables page
+     rather than a native Excel HTML export.
   4. Runs build_report.js (Node) to assemble the final single-file HTML report.
 
 .PARAMETER SourceExcelPath
@@ -40,12 +41,28 @@ $scriptDir = $PSScriptRoot
 $reportDir = "C:\Users\User\Desktop\Global Purchase Report Claude\Global Purchase Report RPA\REPORT"
 
 if (-not $SourceExcelPath) {
+  $namePattern = '^FIN_MHK\+STC\+MZQ\+MIL\+RACO_PUR_REPORT-\((\d+)-(\d+)\)(\d{4})_(\d{8})_RV?(\d+)\.xlsx$'
   $candidates = Get-ChildItem -Path $reportDir -Filter "FIN_MHK+STC+MZQ+MIL+RACO_PUR_REPORT-(*.xlsx" -ErrorAction SilentlyContinue |
-    Where-Object { $_.Name -match '^FIN_MHK\+STC\+MZQ\+MIL\+RACO_PUR_REPORT-\(\d+-\d+\)\d{4}_(\d{8})_RV?\d+\.xlsx$' }
+    Where-Object { $_.Name -match $namePattern }
   if (-not $candidates) {
     throw "No source report file found matching the expected naming pattern in: $reportDir"
   }
-  $SourceExcelPath = ($candidates | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
+  # Pick by the reporting PERIOD encoded in the filename (end month/year, then
+  # generation date, then revision number) - NOT file modification time. A
+  # file merely being opened (e.g. in Excel) can bump its LastWriteTime
+  # without it actually being a newer reporting period, which previously
+  # picked the wrong source file.
+  $scored = $candidates | ForEach-Object {
+    $null = $_.Name -match $namePattern
+    [PSCustomObject]@{
+      File     = $_
+      Year     = [int]$Matches[3]
+      EndMonth = [int]$Matches[2]
+      GenDate  = $Matches[4]
+      Revision = [int]$Matches[5]
+    }
+  }
+  $SourceExcelPath = ($scored | Sort-Object Year, EndMonth, GenDate, Revision -Descending | Select-Object -First 1).File.FullName
 }
 if (-not (Test-Path $SourceExcelPath)) {
   throw "Source file not found: $SourceExcelPath"
@@ -131,35 +148,73 @@ try {
   [System.IO.File]::WriteAllText((Join-Path $workDir "data_sheet.json"), $sb.ToString(), $noBomUtf8)
   Write-Host "  Wrote data_sheet.json"
 
-  # --- 2. Exchange Rate sheet -> native HTML export (only sheet kept as native) ---
-  # Excel's "Save As Web Page" exports every VISIBLE sheet in the workbook
-  # regardless of Worksheet.Select() - selection only changes which sheet is
-  # active, not what gets included. To get just Exchange Rate, temporarily
-  # hide every other currently-visible sheet first (safe: the workbook was
-  # opened read-only and is never saved, so these visibility changes are
-  # never written back to the source file).
-  Write-Host "Exporting Exchange Rate sheet..."
-  $hiddenSheets = @()
-  foreach ($s in $wb.Worksheets) {
-    if ($s.Name -ne "Exchange Rate" -and $s.Visible -eq -1) {  # xlSheetVisible
-      $s.Visible = 0  # xlSheetHidden
-      $hiddenSheets += $s.Name
-    }
+  # --- 2. Exchange Rate sheet -> "Platium Buy Rate : Foreign Currency => USD"
+  #        table only -> JSON (the HKD-rate table next to it is dropped) ---
+  # Locate the table by its own label instead of hardcoding row/column numbers,
+  # so this keeps working if the sheet layout shifts in a future month's file.
+  Write-Host "Extracting Exchange Rate (Platium Buy Rate USD) table..."
+  $wsRate = $wb.Worksheets.Item("Exchange Rate")
+  $rateLabel = "Platium Buy Rate : Foreign Currency => USD"
+  $labelCell = $wsRate.Cells.Find($rateLabel)
+  if (-not $labelCell) { throw "Could not find '$rateLabel' label in Exchange Rate sheet" }
+  $rateHeaderRow = $labelCell.Row + 1
+  $rateStartCol = $labelCell.Column
+  $rateNumCols = 12  # yyyy-mm + AUD,CAD,CNY,EUR,GBP,JPY,NTD,THB,USD,HKD,PEN
+  $rateEndCol = $rateStartCol + $rateNumCols - 1
+
+  $rateSb = New-Object System.Text.StringBuilder
+  [void]$rateSb.Append('{"header":[')
+  for ($c = $rateStartCol; $c -le $rateEndCol; $c++) {
+    if ($c -gt $rateStartCol) { [void]$rateSb.Append(',') }
+    $cellStr = ($wsRate.Cells($rateHeaderRow, $c).Text).Trim().Replace('\', '\\').Replace('"', '\"')
+    [void]$rateSb.Append('"' + $cellStr + '"')
   }
-  $htmlPath = Join-Path $workDir "report.htm"
-  $wb.SaveAs($htmlPath, 44)  # xlHtml
-  Write-Host "  Saved native export (hid: $($hiddenSheets -join ', '))"
+  [void]$rateSb.Append('],"rows":[')
+
+  $r = $rateHeaderRow + 1
+  $rateFirstRow = $true
+  while ($wsRate.Cells($r, $rateStartCol).Text.Trim() -ne "") {
+    if (-not $rateFirstRow) { [void]$rateSb.Append(',') }
+    $rateFirstRow = $false
+    [void]$rateSb.Append('[')
+    for ($c = $rateStartCol; $c -le $rateEndCol; $c++) {
+      if ($c -gt $rateStartCol) { [void]$rateSb.Append(',') }
+      if ($c -eq $rateStartCol) {
+        # yyyy-mm is a text label, not a real Excel date - always read via .Text.
+        $cellStr = ($wsRate.Cells($r, $c).Text).Trim().Replace('\', '\\').Replace('"', '\"')
+        [void]$rateSb.Append('"' + $cellStr + '"')
+      } else {
+        $cellVal = $wsRate.Cells($r, $c).Value2
+        if ($null -eq $cellVal) {
+          [void]$rateSb.Append('null')
+        } elseif ($cellVal -is [double]) {
+          [void]$rateSb.Append([string]$cellVal)
+        } else {
+          $cellStr = ([string]$cellVal).Replace('\', '\\').Replace('"', '\"')
+          [void]$rateSb.Append('"' + $cellStr + '"')
+        }
+      }
+    }
+    [void]$rateSb.Append(']')
+    $r++
+  }
+  [void]$rateSb.Append(']}')
+
+  [System.IO.File]::WriteAllText((Join-Path $workDir "exrate_platinum_usd.json"), $rateSb.ToString(), $noBomUtf8)
+  Write-Host "  $($r - $rateHeaderRow - 1) rows x $rateNumCols cols -> exrate_platinum_usd.json"
 
   $wb.Close($false)
 } finally {
   # Release COM references in reverse order of creation before Quit, so no
   # lingering RCW keeps an invisible EXCEL.EXE process alive after this script exits.
+  if ($labelCell) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($labelCell) | Out-Null }
+  if ($wsRate) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($wsRate) | Out-Null }
   if ($range) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($range) | Out-Null }
   if ($ws) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($ws) | Out-Null }
   if ($wb) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($wb) | Out-Null }
   $excel.Quit()
   [System.Runtime.InteropServices.Marshal]::ReleaseComObject($excel) | Out-Null
-  Remove-Variable range, ws, wb, excel -ErrorAction SilentlyContinue
+  Remove-Variable range, ws, wb, excel, wsRate, labelCell -ErrorAction SilentlyContinue
   [GC]::Collect()
   [GC]::WaitForPendingFinalizers()
 }

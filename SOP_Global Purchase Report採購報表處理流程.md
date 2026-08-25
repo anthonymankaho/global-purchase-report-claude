@@ -1,6 +1,6 @@
 # Global Purchase Report 標準作業程序 (SOP)
 
-**版本**: v1.10（HTML 互動版報表：明細表排序/分隔線/Max_DB/Min_DB 衍生欄位、TEMP 工作檔+`-Publish` 慣例；v1.9 修正 Exchange Rate 匯出 bug、新增 Item Code 篩選器；v1.8 新增第 8 節「HTML 互動版報表」：獨立工具，把當月最終報表轉成單一自包含互動式 HTML 檔案，刻意不接自動化流程；v1.7 AA/AB 改為全程人工處理：`Build-GlobalPurchaseReport.ps1` 不再碰 AA/AB 及其依賴欄位，新增 `Complete-FormulaColumns.ps1` 接手 AC/AD/AE/AF/AG/AH/AI + New Vendors 分頁，新增步驟3.5/3.6；v1.6 新增第3.1節「第2列母版公式目前版本」存證表，記錄2026-08人工效能優化）
+**版本**: v1.11（HTML 互動版報表：新增項目收合按鈕、修正 DB 顏色不一致與 scrollX 欄位錯位 bug、欄寬自動調整、恢復 Ignore/Consider 篩選器、Exchange Rate 頁重建為 DataTables 互動表格、修正來源檔案自動偵測改依報表期間排序、VBA 按鈕沙盒測試；v1.10 HTML 互動版報表：明細表排序/分隔線/Max_DB/Min_DB 衍生欄位、TEMP 工作檔+`-Publish` 慣例；v1.9 修正 Exchange Rate 匯出 bug、新增 Item Code 篩選器；v1.8 新增第 8 節「HTML 互動版報表」：獨立工具，把當月最終報表轉成單一自包含互動式 HTML 檔案，刻意不接自動化流程；v1.7 AA/AB 改為全程人工處理：`Build-GlobalPurchaseReport.ps1` 不再碰 AA/AB 及其依賴欄位，新增 `Complete-FormulaColumns.ps1` 接手 AC/AD/AE/AF/AG/AH/AI + New Vendors 分頁，新增步驟3.5/3.6；v1.6 新增第3.1節「第2列母版公式目前版本」存證表，記錄2026-08人工效能優化）
 **適用範圍**: 每月 Global Purchase Report（MHK/STC/MZQ/MIL/RACO/TVS/MAZ 採購資料彙總）產製流程
 **取代對象**: 原本由 UiPath RPA 專案 "Global Purchase Report" 自動執行的合併/彙總/報表產出步驟
 
@@ -282,12 +282,13 @@ Saved: ...\REPORT\FIN_MHK+STC+MZQ+MIL+RACO+TVS_PUR_REPORT_2026-06.xlsx
 | 2026-08-24 | v1.8 | 新增 `Global Purchase Report RPA\HTML_Report_Generator\`（獨立工具，見 README「HTML 互動版報表」一節）：把當月最終報表轉成單一自包含互動式 HTML 檔案。刻意不接在 `Build-GlobalPurchaseReport.ps1` 或 `Complete-FormulaColumns.ps1` 之後自動執行，理由同 AA/AB 定稿前不應產出對外檔案的原則——見下方新增小節 |
 | 2026-08-24 | v1.9 | HTML 互動版報表修正與擴充：(1) 修正 Exchange Rate 匯出 bug——`Worksheet.Select()` 不會限制「另存為網頁」的匯出範圍，實際上會把活頁簿裡所有可見分頁都匯出，導致抓到錯誤的分頁內容，改成先隱藏其他分頁再匯出；(2) GLID/Fittings/Packaging/Coating 新增第 5 個篩選器 Item Code；(3) GLID 頁測試性加入 ITEM_CODE/Std Part Desc 欄位分隔線（保留）與 Max_Vendor_DB 衍生欄位（後續取消，未套用到其他三頁） |
 | 2026-08-25 | v1.10 | HTML 互動版報表持續擴充：(1) 四頁明細表改依 ITEM_CODE 分組、組內依 Avg PO Price(USD) 由高至低排序；(2) 欄位分組間加分隔線（套用到全部四頁）；(3) Max/Min/Avg/Tot 價格欄位靠右對齊、固定小數點後 4 位；(4) 新增 Max_DB、Min_DB 兩個衍生欄位，追溯該料號最高/最低價實際來自哪個 DB；(5) `Generate-PurchaseReportHtml.ps1` 改用「TEMP 工作檔 + `-Publish` 才產出正式快照」慣例（呼應 incremental-report-file-chaining 規則），避免每次測試都覆寫正式的當月快照 |
+| 2026-08-25 | v1.11 | HTML 互動版報表大幅修正與擴充，並完成 VBA 按鈕沙盒測試：(1) 新增項目收合 +/- 按鈕（獨立一欄、位於 DB 欄之前；DB 欄標題另有總開關可一次全部收合/展開），收合時只顯示該料號 Avg PO Price(USD) 最高的那一列；(2) 修正 DB 長條圖/圓餅圖顏色不一致 bug——原本兩張圖各自依不同排序方式分配顏色，改用同一份固定 DB→顏色對照表；(3) 欄寬改為依內容自動調整（類似 Excel 自動調整欄寬），移除先前強制撐滿 100% 寬度的設定；(4) 修正（3）衍生出的欄位視覺錯位 bug——`scrollX` 讓 DataTables 把表頭/表身拆成兩個獨立 DOM 表格、用 JS 計算寬度同步，在欄數不多的窄表格上偶發計算錯誤導致文字視覺溢位到下一欄（底層資料順序其實一直正確）；四頁明細表與 Exchange Rate 頁均已停用 `scrollX`／`autoWidth`，改用瀏覽器原生表格版面；(5) 恢復 GLID/Fittings/Packaging/Coating 的 Ignore/Consider 篩選器（先前被誤移除，預設仍只顯示 Consider），並在四頁與 Dashboard 都加上白話說明（Consider＝Real transaction、Ignore＝Intercompany transaction）；(6) Exchange Rate 頁重建：捨棄「Platium」(HKD) 匯率表，只保留「Platium Buy Rate: Foreign Currency ⇒ USD」，改用跟 Data 頁一樣的 DataTables 互動表格（可排序/搜尋/匯出 CSV），資料改直接從 Excel 儲存格讀取（依表格自己的標籤定位範圍，不再依賴原生「另存為網頁」匯出），11 個匯率欄位統一小數點後 4 位；(7) 修正 `Generate-PurchaseReportHtml.ps1` 來源檔案自動偵測邏輯——原本用檔案「修改時間」排序，只要舊期間的檔案被開啟過（時間戳記被動到）就可能誤判成「最新」而選錯檔案（此 bug 由使用者實際點擊 VBA 按鈕測試時發現），改為解析檔名內編碼的報表期間（年/結束月）+ 產生日期 + 版本號排序，不再依賴檔案系統時間戳記；(8) 刪除未被任何腳本使用、純屬備援參考的靜態檔 `FIN_MHK+STC+MZQ+MIL+RACO_PUR_REPORT-Temp.xlsx`；(9) 新增 `HtmlUpdateModule.bas`（可手動匯入 Excel 的 VBA 巨集範本，讓使用者用一個按鈕觸發 HTML 更新）並完成沙盒測試：確認 VBA `Shell()` 呼叫 PowerShell、且該 PowerShell 另開自己獨立的 Excel COM 執行個體，與使用者原本開著的 Excel 視窗（含 VBA 編輯器操作中）並不衝突；此按鈕方案是否正式採用（vs. 桌面捷徑/`.bat`）、要接在月結流程哪一步，仍待使用者決定（見第 5 節開放事項） |
 
 ---
 
 ## 8. HTML 互動版報表（獨立工具）
 
-`Global Purchase Report RPA\HTML_Report_Generator\` 底下的 `Generate-PurchaseReportHtml.ps1`，把 `REPORT\` 資料夾裡當月的最終報表轉成一份單一檔案的互動式 HTML（Dashboard 圖表與篩選器、GLID/Fittings/Packaging/Coating 明細表可即時篩選、Exchange Rate 維持原生 Excel 樣式），方便不方便開 Excel 的人（例如用手機/平板）瀏覽報表。
+`Global Purchase Report RPA\HTML_Report_Generator\` 底下的 `Generate-PurchaseReportHtml.ps1`，把 `REPORT\` 資料夾裡當月的最終報表轉成一份單一檔案的互動式 HTML（Dashboard 圖表與篩選器、GLID/Fittings/Packaging/Coating 明細表可即時篩選、Exchange Rate 改成跟 Data 頁一樣的互動式表格），方便不方便開 Excel 的人（例如用手機/平板）瀏覽報表。
 
 用法：
 
@@ -302,6 +303,12 @@ cd "C:\Users\User\Desktop\Global Purchase Report Claude\Global Purchase Report R
 
 **目前為手動執行、刻意未排入自動化流程**：報表要等 AA/AB（Max/Min PO Price）人工填好並確認（見第 4 節）才算定稿，若自動接在 `Build-GlobalPurchaseReport.ps1` 之後執行，有可能拿到還沒補完 AA/AB 的報表去產生 HTML。等確認好要接在月結流程的哪一步之後（例如 `Complete-FormulaColumns.ps1` 執行完之後），再考慮排入自動化。
 
-**GLID/Fittings/Packaging/Coating 分頁篩選器**：Month、DB (Entity)、Std Comm、Std Vendor Name、Item Code 共 5 個多選篩選器 + Reset filters 按鈕，篩選會同時套用到圖表跟下方明細表（明細表是即時從 Data 分頁原始交易資料算出來的，不是讀 Excel 樞紐分析表的快取，所以篩選才能連動）。四頁的明細表都依 ITEM_CODE 分組、組內依 Avg PO Price(USD) 由高至低排序，並在四個欄位分組之間加了分隔線：ITEM_CODE/Std Part Desc │ Max_DB/Max Vendor/Max_PO_Price(USD) │ Min_DB/Min Vendor/Min_PO_Price(USD) │ DB/Vendor/Avg/Tot（Max_DB、Min_DB 是衍生欄位，追溯該料號最高/最低價實際來自哪個 DB，Excel 原檔沒有）；Max/Min/Avg/Tot 價格欄位靠右對齊並固定顯示小數點後 4 位。
+**GLID/Fittings/Packaging/Coating 分頁篩選器**：Month、DB (Entity)、Std Comm、Std Vendor Name、Item Code、Ignore/Consider 共 6 個多選篩選器 + Reset filters 按鈕，篩選會同時套用到圖表跟下方明細表（明細表是即時從 Data 分頁原始交易資料算出來的，不是讀 Excel 樞紐分析表的快取，所以篩選才能連動）。**Ignore/Consider** 篩選器對應 Excel PivotTable 原本就有的「ignore / consider」頁面篩選欄位，預設只勾選 Consider（維持報表原本的範圍），並加上白話說明——Consider 顯示為「Consider (Real transaction)」、Ignore 顯示為「Ignore (Intercompany transaction)」；Dashboard 頁的 Status 篩選器也是同樣的白話說明。四頁的明細表都依 ITEM_CODE 分組、組內依 Avg PO Price(USD) 由高至低排序，並在四個欄位分組之間加了分隔線：ITEM_CODE/Std Part Desc │ Max_DB/Max Vendor/Max_PO_Price(USD) │ Min_DB/Min Vendor/Min_PO_Price(USD) │ [+/-收合欄]/DB/Vendor/Avg/Tot（Max_DB、Min_DB 是衍生欄位，追溯該料號最高/最低價實際來自哪個 DB，Excel 原檔沒有）；Max/Min/Avg/Tot 價格欄位靠右對齊並固定顯示小數點後 4 位。同一料號有多筆 DB/Vendor 資料時，DB 欄前面會有一欄獨立的 +/- 按鈕，可收合成只顯示 Avg PO Price(USD) 最高的那一列（收合後會標示還有幾列），DB 欄標題旁另有一個總開關，可一次全部收合/展開。
+
+**Exchange Rate 頁**：不再是 Excel 原生「另存為網頁」的樣式，改成跟 Data 頁一樣的 DataTables 互動表格（可排序、搜尋、匯出 CSV）。只保留「Platium Buy Rate: Foreign Currency ⇒ USD」這張表（原本旁邊的「Platium」HKD 匯率表已捨棄），11 個貨幣欄位統一顯示小數點後 4 位。資料改為直接從 Exchange Rate 分頁的儲存格讀取（用表格自己的文字標籤定位範圍，不再依賴原生匯出，未來月份即使版面稍有調整也能繼續運作）。
 
 **已知限制**：需要 Node.js（COM 抽取資料後由 `build_report.js` 組出最終 HTML，vendor 端函式庫已內附在 `HTML_Report_Generator\vendor\`，不需連網）。
+
+**來源檔案自動偵測**：不帶 `-SourceExcelPath` 時，會在 `REPORT\` 資料夾裡比對檔名符合命名規則的候選檔案，依檔名內編碼的報表期間（年份、結束月份）、產生日期、版本號排序，選出期間最新的一個——**不是**依檔案的系統修改時間排序（曾經因為舊期間的檔案被開啟過、時間戳記被動到，而誤判成「最新」選錯檔案，已於 2026-08-25 修正，見第 7 節 v1.11）。
+
+**Excel 按鈕觸發（實驗性，未正式部署）**：`HTML_Report_Generator\HtmlUpdateModule.bas` 是一份可手動匯入 Excel VBA 專案的巨集範本（`Sub RunHtmlUpdate`），透過 `Shell()` 呼叫 PowerShell 執行本腳本；目前刻意移除了 `-Publish`，只會更新 TEMP 預覽檔。已在沙盒環境驗證：巨集觸發的 PowerShell 會另開自己獨立的 Excel COM 執行個體，跟使用者原本開著的 Excel 檔案（含 VBA 編輯器操作中）不會衝突。要正式採用需要：(1) 把要放按鈕的報表另存成 `.xlsm`；(2) 因為每月報表檔名都不同，巨集不會自動延續到下個月的新檔案，需要每月手動重新匯入或改用固定範本檔；(3) 尚未確認公司的巨集安全政策是否允許執行會呼叫 `Shell()` 的巨集。是否採用此方案（vs. 桌面捷徑/`.bat`）、要接在月結流程哪一步，仍待使用者決定。
