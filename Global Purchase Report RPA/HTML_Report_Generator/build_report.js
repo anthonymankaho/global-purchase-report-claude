@@ -1266,12 +1266,24 @@ exRateHtml = exRateHtml.replace(/<link rel=Stylesheet href=stylesheet\.css>/i, '
 // Dark mode for this native Excel export: a generic color-invert filter (its
 // internal markup/classes are Excel-generated and not something we author),
 // re-inverting images so any logos/photos still render normally.
+// Two things had to be fixed, found via bisecting a minimal reproduction:
+// 1. The filter goes on <html>, not <body>: when <html> has no background of
+//    its own, the browser propagates <body>'s background to paint the root/
+//    canvas layer *outside* body's own filterable render box, so a filter on
+//    body alone never touches it.
+// 2. Excel's export never sets an explicit background anywhere (neither on
+//    <html> nor <body>) - it just relies on the browser's own default white
+//    canvas fill, which is *not* part of any element's paintable layer and so
+//    cannot be affected by ANY css filter. The html[data-theme="dark"] rule
+//    must set its own `background` so there's an actual painted layer for
+//    the filter to invert, instead of leaving that fallback canvas showing
+//    through unfiltered.
 const exRateDarkModeInjection = `
 <style>
-  body[data-theme="dark"] { filter: invert(0.92) hue-rotate(180deg); background: #fff; }
-  body[data-theme="dark"] img { filter: invert(1) hue-rotate(180deg); }
+  html[data-theme="dark"] { filter: invert(0.92) hue-rotate(180deg); background: #fff; }
+  html[data-theme="dark"] img { filter: invert(1) hue-rotate(180deg); }
 </style>
-<script>function applyTheme(theme) { document.body.setAttribute('data-theme', theme); }</script>
+<script>function applyTheme(theme) { document.documentElement.setAttribute('data-theme', theme); document.body.setAttribute('data-theme', theme); }</script>
 `;
 exRateHtml = /<\/body>/i.test(exRateHtml)
   ? exRateHtml.replace(/<\/body>/i, exRateDarkModeInjection + '</body>')
