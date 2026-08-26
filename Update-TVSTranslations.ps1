@@ -74,45 +74,59 @@ try {
     Write-Host "Column S formula refreshed (rows 2 to $lastRow)."
 
     # --- Step 2: count formula errors in S and T ---
-    $errS = 0; $errT = 0
-    for ($r = 2; $r -le $lastRow; $r++) {
-        if ($ws.Cells.Item($r, 19).Text -match '#N/A|#REF|#VALUE|#NAME') { $errS++ }
-        if ($ws.Cells.Item($r, 20).Text -match '#N/A|#REF|#VALUE|#NAME') { $errT++ }
-    }
+    # Bulk-checked via SpecialCells (one COM call each) instead of looping .Text over
+    # every row individually - a tight per-cell COM loop across ~3000+ rows was found
+    # to intermittently throw transient COM errors ("call rejected", "null-valued
+    # expression") at a different row each run, i.e. a COM round-trip reliability
+    # issue, not a data problem. SpecialCells throws when there are zero matches,
+    # which just means the error count is 0.
+    $xlCellTypeFormulas = -4123
+    $xlErrors = 16
+    $errS = 0
+    try { $errS = $ws.Range("S2:S$lastRow").SpecialCells($xlCellTypeFormulas, $xlErrors).Count } catch { $errS = 0 }
+    $errT = 0
+    try { $errT = $ws.Range("T2:T$lastRow").SpecialCells($xlCellTypeFormulas, $xlErrors).Count } catch { $errT = 0 }
     Write-Host "Formula errors - Column S: $errS   Column T: $errT"
 
     # --- Step 3: audit column T against STANDARD COMM column A, attempt fallback fix via column B match ---
+    # Same bulk-read approach: pull each range into a local array with one COM call,
+    # do all the matching in memory, and only touch the COM object again to write
+    # back the (typically small) subset of cells that actually need fixing.
     $sc = $wb.Sheets.Item("STANDARD COMM")
     $scLastRow = $sc.UsedRange.Rows.Count
 
     $validCodes = New-Object 'System.Collections.Generic.HashSet[string]'
     $descToCode = New-Object 'System.Collections.Generic.Dictionary[string,string]'
-    for ($r = 2; $r -le $scLastRow; $r++) {
-        $code = $sc.Cells.Item($r, 1).Text.Trim()
-        $desc = $sc.Cells.Item($r, 2).Text.Trim()
+    $scVals = $sc.Range("A2:B$scLastRow").Value2
+    for ($i = 1; $i -le $scVals.GetLength(0); $i++) {
+        $code = if ($scVals[$i,1] -is [string]) { $scVals[$i,1].Trim() } else { [string]$scVals[$i,1] }
+        $descText = if ($scVals[$i,2] -is [string]) { $scVals[$i,2].Trim() } else { "" }
         if ($code -ne "") { [void]$validCodes.Add($code) }
-        if ($desc -ne "" -and -not $descToCode.ContainsKey($desc)) { $descToCode[$desc] = $code }
+        if ($descText -ne "" -and -not $descToCode.ContainsKey($descText)) { $descToCode[$descText] = $code }
     }
 
+    $stVals = $ws.Range("S2:T$lastRow").Value2
     $mismatchFixed = 0
     $unresolved = @()
-    for ($r = 2; $r -le $lastRow; $r++) {
-        $tCell = $ws.Cells.Item($r, 20)
-        $tVal = $tCell.Text.Trim()
+    $fixes = @{}  # row (1-based within stVals) -> new code
+    for ($i = 1; $i -le $stVals.GetLength(0); $i++) {
+        $tVal = if ($stVals[$i,2] -is [string]) { $stVals[$i,2].Trim() } else { "" }
         if ($tVal -eq "" -or $validCodes.Contains($tVal)) { continue }
 
-        $sVal = $ws.Cells.Item($r, 19).Text.Trim()
+        $sVal = if ($stVals[$i,1] -is [string]) { $stVals[$i,1].Trim() } else { "" }
         $matchedCode = $null
-        foreach ($desc in $descToCode.Keys) {
-            if ($sVal -like "*$desc*") { $matchedCode = $descToCode[$desc]; break }
+        foreach ($descKey in $descToCode.Keys) {
+            if ($sVal -like "*$descKey*") { $matchedCode = $descToCode[$descKey]; break }
         }
+        $r = $i + 1  # actual worksheet row (data starts at row 2)
         if ($matchedCode) {
-            $tCell.Value2 = $matchedCode
+            $fixes[$r] = $matchedCode
             $mismatchFixed++
         } else {
             $unresolved += "Row $r : T='$tVal' S='$sVal'"
         }
     }
+    foreach ($r in $fixes.Keys) { $ws.Cells.Item($r, 20).Value2 = $fixes[$r] }
     Write-Host "T vs STANDARD COMM - auto-fixed: $mismatchFixed   unresolved: $($unresolved.Count)"
     if ($unresolved.Count -gt 0) {
         Write-Host "Unresolved rows (need manual review):" -ForegroundColor Yellow
@@ -124,23 +138,37 @@ try {
     $descLastRow = $desc.UsedRange.Rows.Count
     $citePattern = [regex]'\s*\[cite:[^\]]*\]'
     $cleaned = 0
-    for ($r = 2; $r -le $descLastRow; $r++) {
-        $cell = $desc.Cells.Item($r, 3)
-        $v = $cell.Value2
+    $descVals = $desc.Range("C2:C$descLastRow").Value2
+    $citeFixes = @{}
+    for ($i = 1; $i -le $descVals.GetLength(0); $i++) {
+        $v = $descVals[$i,1]
         if ($v -is [string] -and $v -match '\[cite') {
-            $cell.Value2 = $citePattern.Replace($v, '').TrimEnd()
+            $citeFixes[$i + 1] = $citePattern.Replace($v, '').TrimEnd()
             $cleaned++
         }
     }
+    foreach ($r in $citeFixes.Keys) { $desc.Cells.Item($r, 3).Value2 = $citeFixes[$r] }
     Write-Host "Citation artifacts cleaned in 'DESC ITY - ENG': $cleaned"
 
     # Re-refresh column S once more so cleaned lookup text/new fixes are reflected in this month's rows
     $ws.Range("S2").Formula = $sFormula
     $ws.Range("S2").AutoFill($ws.Range("S2:S$lastRow"), 0) | Out-Null
 
+    # This AutoFill can re-trigger TRANSLATE()'s asynchronous (web-service-backed)
+    # recalculation for any newly-changed lookups, so give it a moment before saving.
+    $excel.CalculateUntilAsyncQueriesDone()
+    for ($i = 0; $i -lt 20 -and $excel.CalculationState -ne 0; $i++) { Start-Sleep -Milliseconds 250 }
+
+    $beforeSaveTime = Get-Date
     $wb.Save()
-    if (-not $wb.Saved) { throw "Save() completed but workbook still reports unsaved changes." }
-    Write-Host "Saved successfully." -ForegroundColor Green
+    # Workbook.Saved is an unreliable read immediately after Save() over COM (found
+    # by testing: the file's actual on-disk content/timestamp were already correct
+    # even when .Saved falsely reported $false) - verify against the file itself
+    # instead of trusting that in-memory property.
+    Start-Sleep -Milliseconds 500
+    $onDiskTime = (Get-Item $FilePath).LastWriteTime
+    if ($onDiskTime -lt $beforeSaveTime) { throw "Save() completed but the file's on-disk timestamp didn't update - it may not have actually saved." }
+    Write-Host "Saved successfully (confirmed via on-disk file timestamp)." -ForegroundColor Green
 
     Write-Host ""
     Write-Host "=== Summary ===" -ForegroundColor Cyan

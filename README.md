@@ -48,13 +48,22 @@ If TVS's translation/commodity codes need attention, run separately:
 .\New-ReportAuditSummary.ps1
 ```
 
-若需要產出外部交付檔案（把數值複製進 OUTSIDETEMP.xlsx、延伸表格、重新整理樞紐分析表、另存當月交付檔）：
-If an outside-delivery deliverable is needed (value-copy into OUTSIDETEMP.xlsx, extend the table, refresh all PivotTables, Save-As the dated deliverable):
+若當月 MAZ 有 PEN 幣別交易，需先補匯率缺口（見 SOP 第 5 節）：
+If this month's MAZ has PEN-currency rows, fill the rate gap first (see SOP §5):
 ```powershell
-.\Publish-OutsideReport.ps1 -ReportMonth "2026-06"
+.\Get-PenExchangeRate.ps1 -ReportMonth "2026-07"
 ```
-> ⚠️ 這支腳本會直接改動 `OUTSIDETEMP.xlsx`（累加資料、延伸表格），不是唯讀範本。詳見 SOP 第 4 節步驟 8。
-> ⚠️ This script modifies `OUTSIDETEMP.xlsx` directly (accumulates data, extends the table) — it is not a read-only template. See SOP §4 step 8 for details.
+
+若需要產出外部交付檔案（把數值複製進 OUTSIDETEMP.xlsx 和 OUTSIDETEMP_VBA_PRACTICE.xlsm、延伸表格、重新整理樞紐分析表、另存當月交付檔）：
+If an outside-delivery deliverable is needed (value-copy into OUTSIDETEMP.xlsx and OUTSIDETEMP_VBA_PRACTICE.xlsm, extend the tables, refresh all PivotTables, Save-As the dated deliverable):
+```powershell
+.\Publish-OutsideReport.ps1 -ReportMonth "2026-07"
+```
+> ⚠️ 這支腳本會直接改動 `OUTSIDETEMP.xlsx` 和 `OUTSIDETEMP_VBA_PRACTICE.xlsm`（累加資料、延伸表格），不是唯讀範本；執行前若偵測到任何 EXCEL.EXE 在跑會直接報錯中止（不強制關閉）。詳見 SOP 第 4 節步驟 8。
+> ⚠️ This script modifies `OUTSIDETEMP.xlsx` and `OUTSIDETEMP_VBA_PRACTICE.xlsm` directly (accumulates data, extends the tables) — not read-only templates; it throws and aborts if any EXCEL.EXE is detected running (does not force-close). See SOP §4 step 8 for details.
+
+完整逐步指令請見 `PowerShell-Commands.md` 或 `SOP-Quick-Guide.md`。
+For the full step-by-step command list, see `PowerShell-Commands.md` or `SOP-Quick-Guide.md`.
 
 ---
 
@@ -68,7 +77,11 @@ Global Purchase Report Claude/
 ├── Complete-FormulaColumns.ps1                         ← 手動填好 AA/AB 之後執行：AC/AD/AE/AF/AG/AH/AI + New Vendors 分頁
 ├── Update-TVSTranslations.ps1                          ← TVS 翻譯/商品代碼檢查與修補（獨立腳本）
 ├── New-ReportAuditSummary.ps1                          ← 稽核摘要（唯讀，最後列號 + 七實體列數 + 總列數）
-├── Publish-OutsideReport.ps1                           ← 外部交付檔案：複製數值進 OUTSIDETEMP、延伸表格、重新整理樞紐分析表、另存當月交付檔
+├── Get-PenExchangeRate.ps1                             ← 補 MAZ 的 PEN 匯率缺口（抓 USD/PEN，換算寫入 Exchange Rate 分頁 M欄）
+├── Publish-OutsideReport.ps1                           ← 外部交付檔案：複製數值進 OUTSIDETEMP.xlsx + OUTSIDETEMP_VBA_PRACTICE.xlsm、延伸表格、重新整理樞紐分析表、另存當月交付檔
+├── PowerShell-Commands.md                              ← 全部指令速查（`$ReportMonth` 變數，每月僅需改一行）
+├── PowerShell-Runtime-Report.md                        ← 各腳本執行時間記錄
+├── SOP-Quick-Guide.md                                  ← SOP 精簡版重點摘要 + 逐步指令表
 ├── Global Purchase Report RPA/                         ← 舊 RPA 專案的只讀複本，供分析參考（腳本不會寫入此資料夾）
 ├── Exchange Rate/                                      ← 每月放 STANDARD EXCHANGE RATE.xls[x]（人工取得，腳本自動讀取）
 ├── MHK/ STC/ MZQ/ MIL/ RACO/ TVS/ MAZ/                  ← 各實體當月原始資料（人工放入）+ 腳本產出的月份快照
@@ -96,9 +109,11 @@ Global Purchase Report Claude/
 | RACO/TVS 樣板存檔衝突 | ✅ 已修正（改用固定範本檔，不再自動抓最新快照）|
 | MIL 的 PART TYPE 欄位 | ✅ 已修正（數字 1-9 自動轉成 "B"，修好 AG 欄 #N/A 的問題）|
 | 稽核摘要工具 | ✅ 已完成（`New-ReportAuditSummary.ps1`）|
-| 外部交付檔案流程（OUTSIDETEMP → 當月交付檔） | ✅ 已完成（`Publish-OutsideReport.ps1`：數值複製、延伸 Table1、重新整理樞紐分析表、另存新檔，含自動遞增 RV 編號）|
-| MAZ 的 PEN 匯率缺口 | 待處理（`STANDARD EXCHANGE RATE` 來源檔沒有 PEN 匯率）|
+| 外部交付檔案流程（OUTSIDETEMP → 當月交付檔） | ✅ 已完成（`Publish-OutsideReport.ps1`：數值複製、延伸 Table1、重新整理樞紐分析表、另存新檔，含自動遞增 RV 編號；2026-08-26 起同步擴充到 `OUTSIDETEMP_VBA_PRACTICE.xlsm`）|
+| MAZ 的 PEN 匯率缺口 | ✅ 已完成（`Get-PenExchangeRate.ps1`：抓 USD/PEN 換算成 HKD/PEN 寫入，2026-07 月結已實測使用成功）|
 | OUTSIDETEMP.xlsx 的 `data` 命名範圍已損壞 | ✅ 已修復（2026-08-25，人工手動重建：`data` 改指向 `=Table1[#All]`；3 個隱藏分頁共 18 個樞紐分析表已實測全部重新整理成功）|
+| OUTSIDETEMP_VBA_PRACTICE.xlsm 的 `data` 命名範圍損壞/缺失 | 修復中（同一種問題，2026-08-26 發現，尚未確認修復完成，見 SOP 第 5 節）|
+| 2026-07 月結 | ✅ 7個實體皆已用實際日期欄位驗證（非僅檔案時間戳記），主報表與交付檔均已產出 |
 | 第2列母版公式效能優化（2026-08） | ✅ 已完成，U/V/W/AA/AB/AG/AH 改有界範圍；修正 ITEM_CODE 前導零不一致造成的 AG/AH #N/A（用 `LET()` 正規化）；完整公式表見 SOP 第3.1節 |
 | AA/AB 改為全程人工處理（2026-08-04）| ✅ 已完成：`Build-GlobalPurchaseReport.ps1` 不再碰 AA/AB 及依賴欄位；新增 `Complete-FormulaColumns.ps1`，人工填好 AA/AB 後執行，自動檢查沒填會報錯中止，避免重演 key 不同步 #N/A 問題 |
 
