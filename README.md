@@ -127,7 +127,7 @@ Global Purchase Report Claude/
 | 外部交付檔案流程（OUTSIDETEMP → 當月交付檔） | ✅ 已完成（`Publish-OutsideReport.ps1`：數值複製、延伸 Table1、重新整理樞紐分析表、另存新檔，含自動遞增 RV 編號；2026-08-26 起同步擴充到 `OUTSIDETEMP_VBA_PRACTICE.xlsm`）|
 | MAZ 的 PEN 匯率缺口 | ✅ 已完成（`Get-PenExchangeRate.ps1`：抓 USD/PEN 換算成 HKD/PEN 寫入，2026-07 月結已實測使用成功）|
 | OUTSIDETEMP.xlsx 的 `data` 命名範圍已損壞 | ✅ 已修復（2026-08-25，人工手動重建：`data` 改指向 `=Table1[#All]`；3 個隱藏分頁共 18 個樞紐分析表已實測全部重新整理成功）|
-| OUTSIDETEMP_VBA_PRACTICE.xlsm 的 `data` 命名範圍損壞/缺失 | 修復中（同一種問題，2026-08-26 發現，尚未確認修復完成，見 SOP 第 5 節）|
+| OUTSIDETEMP_VBA_PRACTICE.xlsm 的 `data` 命名範圍損壞/缺失 | ✅ 已修復（2026-08-27，人工在名稱管理員新增 `data` 指向 `=Table1[#All]`；25個樞紐分析表已實測全部重新整理成功）|
 | 2026-07 月結 | ✅ 7個實體皆已用實際日期欄位驗證（非僅檔案時間戳記），主報表與交付檔均已產出 |
 | 每月通知/發布自動化 | ✅ 已完成（`New-MonthlyEmailDraft.ps1` Gmail草稿 + `New-MonthlySlackPost.ps1` Slack頻道貼文含HTML報表附件，2026-08-27 實測成功，見 SOP 第9節）|
 | 第2列母版公式效能優化（2026-08） | ✅ 已完成，U/V/W/AA/AB/AG/AH 改有界範圍；修正 ITEM_CODE 前導零不一致造成的 AG/AH #N/A（用 `LET()` 正規化）；完整公式表見 SOP 第3.1節 |
