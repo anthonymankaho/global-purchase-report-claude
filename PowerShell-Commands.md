@@ -112,6 +112,16 @@ To sync only OUTSIDETEMP.xlsx and skip the VBA practice file:
 .\Publish-OutsideReport.ps1 -ReportMonth $ReportMonth -VbaPracticePath ""
 ```
 
+## 7. 通知/發布給同事 / Notify/distribute to colleagues
+
+```powershell
+.\New-MonthlyEmailDraft.ps1 -ReportMonth $ReportMonth
+.\New-MonthlySlackPost.ps1 -ReportMonth $ReportMonth -Channel "C0BSWRJU85T"
+```
+
+> ⚠️ Gmail 只會建立**草稿**，絕不自動寄出。**Slack 沒有草稿機制，一執行就會立刻真實發布**到頻道，所有成員馬上看得到。首次使用 Slack 前請先看 `SLACK_SETUP.md` 完成一次性設定。
+> ⚠️ Gmail only creates a **draft**, never auto-sends. **Slack has no draft concept — it posts live the moment you run it**, visible to everyone in the channel immediately. See `SLACK_SETUP.md` for the one-time setup before first use.
+
 ## 若要強制重跑同一個月（略過重複執行安全檢查）/ To force-rerun the same month (bypass the duplicate-run safety check)
 
 ```powershell

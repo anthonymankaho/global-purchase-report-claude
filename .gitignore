@@ -1,0 +1,3 @@
+# Gmail OAuth credentials (DPAPI-encrypted token is machine/user-bound anyway,
+# but never commit either file regardless).
+Credentials/

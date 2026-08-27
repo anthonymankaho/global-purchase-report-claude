@@ -54,10 +54,15 @@ $ReportMonth = "2026-07"   # <- 每月只改這一行 / change only this line ea
 | 5 | `.\New-ReportAuditSummary.ps1 -ReportMonth $ReportMonth` | （建議）唯讀稽核摘要 (Recommended) read-only audit summary |
 | 6 | 👤 打開報表「全部重新整理」、檢查匯率/列數、確認無誤 Open report, Refresh All, check rate/row counts | 人工最終檢查 Manual final review |
 | 7 | `.\Publish-OutsideReport.ps1 -ReportMonth $ReportMonth` | 產出外部交付檔（OUTSIDETEMP + VBA練習檔）Generate outside deliverables (OUTSIDETEMP + VBA practice file) |
-| — | 👤 依公司規定寄送/上傳 Send/upload per company policy | 不自動化 Not automated |
+| 8 | `.\New-MonthlyEmailDraft.ps1 -ReportMonth $ReportMonth` | 建立 Gmail 草稿（絕不自動寄出）Create a Gmail draft (never auto-sends) |
+| 9 | `.\New-MonthlySlackPost.ps1 -ReportMonth $ReportMonth -Channel "C0BSWRJU85T"` | 發到 Slack 頻道（**立刻真實發布**，含HTML報表附件）Post to Slack channel (**posts live immediately**, with HTML report attached) |
+| — | 👤 檢查 Gmail 草稿內容後手動寄出 Review the Gmail draft and send it manually | 不自動化 Not automated |
 
 > ⚠️ Step 1 開始會**自動強制關閉**所有 EXCEL.EXE；Step 7 若偵測到 EXCEL.EXE 在跑則**直接報錯中止**（不強制關閉）——兩支腳本行為不同，執行前都建議先自行存檔關閉 Excel。
 > ⚠️ Step 1 **force-kills** all EXCEL.EXE at startup; Step 7 **throws and aborts** if any EXCEL.EXE is detected (does not force-close) — different behavior between the two, so save and close Excel yourself before either.
+>
+> ⚠️ Step 9（Slack）**沒有草稿機制**，執行後立刻發布，所有頻道成員馬上看得到——跟 Step 8（Gmail 草稿）不一樣，執行前請三思。首次使用需先完成 `SLACK_SETUP.md` 的一次性設定。
+> ⚠️ Step 9 (Slack) has **no draft concept** — it posts live immediately, visible to all channel members right away — unlike Step 8 (Gmail draft). Think before running it. First-time use requires the one-time setup in `SLACK_SETUP.md`.
 
 需要完整參數說明（強制重跑、手動指定範本路徑等）請見 `PowerShell-Commands.md`。
 For full parameter details (force-rerun, manual template paths, etc.) see `PowerShell-Commands.md`.

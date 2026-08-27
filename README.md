@@ -62,6 +62,15 @@ If an outside-delivery deliverable is needed (value-copy into OUTSIDETEMP.xlsx a
 > ⚠️ 這支腳本會直接改動 `OUTSIDETEMP.xlsx` 和 `OUTSIDETEMP_VBA_PRACTICE.xlsm`（累加資料、延伸表格），不是唯讀範本；執行前若偵測到任何 EXCEL.EXE 在跑會直接報錯中止（不強制關閉）。詳見 SOP 第 4 節步驟 8。
 > ⚠️ This script modifies `OUTSIDETEMP.xlsx` and `OUTSIDETEMP_VBA_PRACTICE.xlsm` directly (accumulates data, extends the tables) — not read-only templates; it throws and aborts if any EXCEL.EXE is detected running (does not force-close). See SOP §4 step 8 for details.
 
+確認無誤後，用兩支獨立腳本通知/發布給相關同事（Gmail 草稿 + Slack 頻道貼文，詳見 SOP 第 9 節）：
+Once confirmed, notify/distribute to colleagues via two independent scripts (Gmail draft + Slack channel post, see SOP §9 for details):
+```powershell
+.\New-MonthlyEmailDraft.ps1 -ReportMonth "2026-07"
+.\New-MonthlySlackPost.ps1 -ReportMonth "2026-07" -Channel "C0BSWRJU85T"
+```
+> ⚠️ Gmail 只建立草稿，絕不自動寄出；**Slack 沒有草稿機制，執行後立刻真實發布到頻道**，第一次使用前請先看 `SLACK_SETUP.md` 完成一次性設定。
+> ⚠️ Gmail only creates a draft, never auto-sends; **Slack has no draft concept — it posts live to the channel immediately**. See `SLACK_SETUP.md` for the one-time setup before first use.
+
 完整逐步指令請見 `PowerShell-Commands.md` 或 `SOP-Quick-Guide.md`。
 For the full step-by-step command list, see `PowerShell-Commands.md` or `SOP-Quick-Guide.md`.
 
@@ -79,6 +88,12 @@ Global Purchase Report Claude/
 ├── New-ReportAuditSummary.ps1                          ← 稽核摘要（唯讀，最後列號 + 七實體列數 + 總列數）
 ├── Get-PenExchangeRate.ps1                             ← 補 MAZ 的 PEN 匯率缺口（抓 USD/PEN，換算寫入 Exchange Rate 分頁 M欄）
 ├── Publish-OutsideReport.ps1                           ← 外部交付檔案：複製數值進 OUTSIDETEMP.xlsx + OUTSIDETEMP_VBA_PRACTICE.xlsm、延伸表格、重新整理樞紐分析表、另存當月交付檔
+├── New-MonthlyEmailDraft.ps1                           ← Gmail 草稿通知（比照舊RPA格式與收件人清單，只建草稿不寄出）
+├── New-MonthlySlackPost.ps1                            ← Slack 頻道貼文（含互動式HTML報表附件，即時發布無草稿機制）
+├── Save-SlackToken.ps1                                 ← 一次性設定：加密儲存 Slack Bot Token
+├── SLACK_SETUP.md                                      ← Slack App 一次性設定步驟
+├── GmailOAuth.Common.ps1                                ← Gmail OAuth 共用函式（沿用 Weekly Exchange Report 專案的授權）
+├── Credentials/                                        ← OAuth/Bot Token（DPAPI 加密，已加入 .gitignore，不會被提交）
 ├── PowerShell-Commands.md                              ← 全部指令速查（`$ReportMonth` 變數，每月僅需改一行）
 ├── PowerShell-Runtime-Report.md                        ← 各腳本執行時間記錄
 ├── SOP-Quick-Guide.md                                  ← SOP 精簡版重點摘要 + 逐步指令表
@@ -114,6 +129,7 @@ Global Purchase Report Claude/
 | OUTSIDETEMP.xlsx 的 `data` 命名範圍已損壞 | ✅ 已修復（2026-08-25，人工手動重建：`data` 改指向 `=Table1[#All]`；3 個隱藏分頁共 18 個樞紐分析表已實測全部重新整理成功）|
 | OUTSIDETEMP_VBA_PRACTICE.xlsm 的 `data` 命名範圍損壞/缺失 | 修復中（同一種問題，2026-08-26 發現，尚未確認修復完成，見 SOP 第 5 節）|
 | 2026-07 月結 | ✅ 7個實體皆已用實際日期欄位驗證（非僅檔案時間戳記），主報表與交付檔均已產出 |
+| 每月通知/發布自動化 | ✅ 已完成（`New-MonthlyEmailDraft.ps1` Gmail草稿 + `New-MonthlySlackPost.ps1` Slack頻道貼文含HTML報表附件，2026-08-27 實測成功，見 SOP 第9節）|
 | 第2列母版公式效能優化（2026-08） | ✅ 已完成，U/V/W/AA/AB/AG/AH 改有界範圍；修正 ITEM_CODE 前導零不一致造成的 AG/AH #N/A（用 `LET()` 正規化）；完整公式表見 SOP 第3.1節 |
 | AA/AB 改為全程人工處理（2026-08-04）| ✅ 已完成：`Build-GlobalPurchaseReport.ps1` 不再碰 AA/AB 及依賴欄位；新增 `Complete-FormulaColumns.ps1`，人工填好 AA/AB 後執行，自動檢查沒填會報錯中止，避免重演 key 不同步 #N/A 問題 |
 
