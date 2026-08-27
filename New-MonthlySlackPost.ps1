@@ -31,11 +31,20 @@
   the HTML report). Defaults to the standard naming convention.
 
 .PARAMETER HtmlAttachmentPath
-  Path to the interactive HTML report to actually attach. Defaults to the fixed
-  "Global Purchase Report RPA\REPORT\FIN_Global_Purchase -Report_html.html".
+  Path to the interactive HTML report to actually attach. Defaults to the dated
+  snapshot Generate-PurchaseReportHtml.ps1 -Publish produces for this ReportMonth
+  ("...Report_html_<YYYYMM>.html"); falls back to the TEMP working file (with a
+  warning) if that dated snapshot doesn't exist yet.
+
+.PARAMETER IncludeHtmlIntro
+  Adds a one-time bolded "New:" callout introducing the interactive web (HTML) format
+  itself - added 2026-08-27 when this channel first started receiving it. Defaults to
+  $true; once the channel is used to it, pass -IncludeHtmlIntro:$false to drop it from
+  future months' posts without editing this script.
 
 .EXAMPLE
   .\New-MonthlySlackPost.ps1 -ReportMonth "2026-07" -Channel "global-purchase-report"
+  .\New-MonthlySlackPost.ps1 -ReportMonth "2026-08" -Channel "C0BSWRJU85T" -IncludeHtmlIntro:$false
 #>
 
 [CmdletBinding()]
@@ -49,7 +58,9 @@ param(
 
     [string]$DeliverablePath,
 
-    [string]$HtmlAttachmentPath = (Join-Path $PSScriptRoot "Global Purchase Report RPA\REPORT\FIN_Global_Purchase -Report_html.html")
+    [string]$HtmlAttachmentPath,
+
+    [bool]$IncludeHtmlIntro = $true
 )
 
 $ErrorActionPreference = 'Stop'
@@ -86,6 +97,20 @@ if (-not $DeliverablePath -or -not (Test-Path $DeliverablePath)) {
 $deliverableName = [System.IO.Path]::GetFileName($DeliverablePath)
 Write-Host "Deliverable found (readiness check only, NOT attached): $DeliverablePath"
 
+if (-not $HtmlAttachmentPath) {
+    $htmlDir = Join-Path $PSScriptRoot "Global Purchase Report RPA\REPORT"
+    $yyyymm = "{0:D4}{1:D2}" -f $year, $month
+    $datedHtmlPath = Join-Path $htmlDir "FIN_Global_Purchase -Report_html_$yyyymm.html"
+    $tempHtmlPath = Join-Path $htmlDir "FIN_Global_Purchase -Report_html_TEMP.html"
+    if (Test-Path $datedHtmlPath) {
+        $HtmlAttachmentPath = $datedHtmlPath
+    } elseif (Test-Path $tempHtmlPath) {
+        Write-Host "Warning: dated snapshot not found ($datedHtmlPath) - falling back to the TEMP working file. Run Generate-PurchaseReportHtml.ps1 -Publish to create the dated snapshot for this month." -ForegroundColor Yellow
+        $HtmlAttachmentPath = $tempHtmlPath
+    } else {
+        throw "No HTML report found (checked $datedHtmlPath and $tempHtmlPath) - run Generate-PurchaseReportHtml.ps1 -Publish first, or pass -HtmlAttachmentPath explicitly."
+    }
+}
 if (-not (Test-Path $HtmlAttachmentPath)) {
     throw "HTML report not found: $HtmlAttachmentPath - run Generate-PurchaseReportHtml.ps1 -Publish first, or pass -HtmlAttachmentPath explicitly."
 }
@@ -93,6 +118,12 @@ $htmlFileName = [System.IO.Path]::GetFileName($HtmlAttachmentPath)
 $htmlBytes = [System.IO.File]::ReadAllBytes($HtmlAttachmentPath)
 Write-Host "HTML report to attach: $HtmlAttachmentPath ($([Math]::Round($htmlBytes.Length / 1MB, 1)) MB)"
 Write-Host "Channel      : #$Channel"
+Write-Host "HTML intro   : $(if ($IncludeHtmlIntro) { 'included' } else { 'omitted' }) (-IncludeHtmlIntro)"
+
+$htmlIntroLine = ""
+if ($IncludeHtmlIntro) {
+    $htmlIntroLine = "`n*New:* this report is now shared as an interactive web (HTML) file - download the attachment below and open it in your web browser (double-click it, or drag it into Chrome/Edge) to sort, filter and search the data interactively, no Excel required.`n"
+}
 
 $text = @"
 *Global purchase report $periodLabel - PO Price Comparison*
@@ -100,6 +131,7 @@ $text = @"
 Dear All,
 
 Please find attached the interactive PO Price Comparison report (Fittings, Glass Lids, Packaging and Coating items) - open the attached HTML file in a browser.
+$htmlIntroLine
 (Source workbook: ``$deliverableName`` - too large to attach directly; ask Anthony Man for a copy or a Google Drive link if you need the raw Excel file.)
 
 If you have any questions, please feel free to contact Anthony Man (anthonym@meyer-msc.com).
