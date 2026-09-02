@@ -8,7 +8,8 @@
   Matches the reference format found in the original UiPath RPA's SendMailX activity
   (Main.xaml) and its supporting Project_Notebook.xlsx "Scratchpad" sheet: subject
   "Global purchase report (1-M)YYYY - PO Price Comparison", the same body wording,
-  and the same confirmed 16-person distribution list (3 To + 13 Cc).
+  and the same confirmed distribution list (3 To + 12 Cc = 15 people; originally 16 -
+  WSCheung removed 2026-09-02, left the company per Ken).
 
   Deliberately does NOT auto-attach the report file, matching the original RPA's own
   documented reason: the file is too large for email (the old RPA's own follow-up
@@ -26,7 +27,7 @@
   drafting (never attached - see above). Defaults to the standard naming convention.
 
 .PARAMETER To / -Cc
-  Override the default 16-person distribution list, e.g. for a test run to yourself only.
+  Override the default 15-person distribution list, e.g. for a test run to yourself only.
 
 .PARAMETER IncludeHtmlIntro
   Adds a one-time paragraph introducing the new interactive web (HTML) version of the
@@ -53,7 +54,7 @@ param(
     ),
     [string[]]$Cc = @(
         'ksk@meyer-mil.com', 'aprilz@meyer-mmc.com', 'spchoi@meyer-mmc.com', 'hugo@meyer-mil.com',
-        'Wscheung@meyer-mil.com', 'alex@meyer-msc.com', 'walker@meyer-mil.com', 'pccken@silverstone-stc.com',
+        'alex@meyer-msc.com', 'walker@meyer-mil.com', 'pccken@silverstone-stc.com',
         'michaelt@meyer-msc.com', 'fiona@meyer-msc.com', 'chengpuicheeken@gmail.com', 'adaw@meyer-mhk.com',
         'kenny@meyer-mzq.com'
     ),
