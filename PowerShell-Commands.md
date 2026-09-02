@@ -112,6 +112,18 @@ To sync only OUTSIDETEMP.xlsx and skip the VBA practice file:
 .\Publish-OutsideReport.ps1 -ReportMonth $ReportMonth -VbaPracticePath ""
 ```
 
+## 6.5.（一次性/視需要）把 OUTSIDETEMP 算好的 ProdFamiDesc 複製回正式來源檔 / (One-off/as-needed) copy OUTSIDETEMP's computed ProdFamiDesc back into the official source file
+
+只在來源 Excel 的「MHK+STC+MZQ+MIL+RACO Data」分頁還沒有 `ProdFamiDesc` 這欄（或該欄需要重新同步）時才需要執行。會先逐列核對 PO_NO/VEND_INV_NO/ITEM_CODE/REC_QTY 對齊無誤（含前導零正規化），才把值（不是公式）複製進正式來源檔；核對不過會直接中止，不寫入任何資料。
+Only needed if the official source Excel's "MHK+STC+MZQ+MIL+RACO Data" tab doesn't yet have a `ProdFamiDesc` column (or it needs re-syncing). Verifies every row aligns by PO_NO/VEND_INV_NO/ITEM_CODE/REC_QTY (with leading-zero normalization) before copying the values (not the formula) into the official source file; aborts without writing anything if any row doesn't match.
+
+```powershell
+.\Global Purchase Report RPA\HTML_Report_Generator\Copy-ProdFamiDescToSource.ps1
+```
+
+> ⚠️ 這支腳本會直接改動並存檔正式月報來源檔（例如 `FIN_MHK+STC+MZQ+MIL+RACO_PUR_REPORT-(1-7)2026_20260826_RV0.xlsx`），執行前請先確認該檔案未在 Excel 中開啟（若偵測到 EXCEL.EXE 在跑會直接報錯中止）。預設路徑寫死在腳本的 `param()` 區塊，若檔名不同（例如換到下個月的來源檔），需用 `-SourceReportPath` 明確指定。
+> ⚠️ This script modifies and saves the official monthly source file directly (e.g. `FIN_MHK+STC+MZQ+MIL+RACO_PUR_REPORT-(1-7)2026_20260826_RV0.xlsx`) — confirm it isn't open in Excel first (throws and aborts if EXCEL.EXE is detected running). Default paths are hardcoded in the script's `param()` block; pass `-SourceReportPath` explicitly if the filename differs (e.g. next month's source file).
+
 ## 7. 通知/發布給同事 / Notify/distribute to colleagues
 
 ```powershell
