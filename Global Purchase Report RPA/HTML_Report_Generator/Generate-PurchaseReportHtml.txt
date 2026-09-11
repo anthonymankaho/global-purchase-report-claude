@@ -1,0 +1,219 @@
+<#
+.SYNOPSIS
+  Builds the interactive HTML version of the Global Purchase Report from the
+  monthly Excel deliverable.
+
+.DESCRIPTION
+  1. Opens the source workbook read-only via Excel COM.
+  2. Extracts the full Data sheet to JSON.
+  3. Extracts only the "Platium Buy Rate : Foreign Currency => USD" table from
+     the Exchange Rate sheet to JSON (the HKD-rate table is not kept) - like
+     the other tabs, this is rendered by build_report.js as a DataTables page
+     rather than a native Excel HTML export.
+  4. Runs build_report.js (Node) to assemble the final single-file HTML report.
+
+.PARAMETER SourceExcelPath
+  Path to the source "FIN_..._PUR_REPORT-(x-y)YYYY_YYYYMMDD_RVn.xlsx" file.
+  If omitted, auto-detects the most recently modified file matching that
+  naming pattern in the REPORT folder.
+
+.PARAMETER OutputPath
+  Path for the generated HTML file. If omitted, defaults to the fixed working
+  file "REPORT\FIN_Global_Purchase -Report_html_TEMP.html" - safe to
+  regenerate any number of times while iterating (see -Publish below).
+
+.PARAMETER Publish
+  After building, also copies the result to the dated, period-stamped
+  snapshot "REPORT\FIN_Global_Purchase -Report_html_<YYYYMM>.html" (YYYYMM
+  from the source file's own reporting period). Only do this at the actual
+  business checkpoint - not on every test run - per the incremental-report-
+  file-chaining pattern: one continuously-overwritten TEMP working file,
+  dated snapshots only when finalizing.
+#>
+param(
+  [string]$SourceExcelPath,
+  [string]$OutputPath,
+  [switch]$Publish
+)
+
+$ErrorActionPreference = "Stop"
+$scriptDir = $PSScriptRoot
+$reportDir = "C:\Users\User\Desktop\Global Purchase Report Claude\Global Purchase Report RPA\REPORT"
+
+if (-not $SourceExcelPath) {
+  $candidates = Get-ChildItem -Path $reportDir -Filter "FIN_MHK+STC+MZQ+MIL+RACO_PUR_REPORT-(*.xlsx" -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -match '^FIN_MHK\+STC\+MZQ\+MIL\+RACO_PUR_REPORT-\(\d+-\d+\)\d{4}_(\d{8})_RV?\d+\.xlsx$' }
+  if (-not $candidates) {
+    throw "No source report file found matching the expected naming pattern in: $reportDir"
+  }
+  $SourceExcelPath = ($candidates | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
+}
+if (-not (Test-Path $SourceExcelPath)) {
+  throw "Source file not found: $SourceExcelPath"
+}
+Write-Host "Source: $SourceExcelPath"
+
+$sourceFileName = Split-Path $SourceExcelPath -Leaf
+# Filename encodes the reporting period as "(startMonth-endMonth)YYYY", e.g.
+# "(1-6)2026" = Jan-Jun 2026. Use the period's END month/year for the output
+# name, not the "_YYYYMMDD_" stamp (that's just when the file was generated).
+if ($sourceFileName -notmatch '\(\d+-(\d+)\)(\d{4})') {
+  throw "Could not find a (start-end)YYYY reporting-period pattern in source filename: $sourceFileName"
+}
+$endMonth = [int]$Matches[1]
+$year = $Matches[2]
+$yyyymm = "{0}{1:D2}" -f $year, $endMonth
+
+if (-not $OutputPath) {
+  $OutputPath = Join-Path $reportDir "FIN_Global_Purchase -Report_html_TEMP.html"
+}
+$publishedPath = Join-Path $reportDir "FIN_Global_Purchase -Report_html_$yyyymm.html"
+Write-Host "Output: $OutputPath"
+if ($Publish) { Write-Host "Will also publish to: $publishedPath" }
+
+$workDir = Join-Path $scriptDir "_work"
+if (Test-Path $workDir) { Remove-Item $workDir -Recurse -Force }
+New-Item -ItemType Directory -Path $workDir | Out-Null
+
+$excel = New-Object -ComObject Excel.Application
+$excel.Visible = $false
+$excel.DisplayAlerts = $false
+try {
+  $wb = $excel.Workbooks.Open($SourceExcelPath, [Type]::Missing, $true)  # ReadOnly
+
+  # --- 1. Data sheet -> JSON ---
+  Write-Host "Extracting Data sheet..."
+  $ws = $wb.Worksheets.Item("Data")
+  $lastRow = $ws.Cells($ws.Rows.Count, 1).End(-4162).Row       # xlUp
+  $lastCol = $ws.Cells(1, $ws.Columns.Count).End(-4159).Column  # xlToLeft, from header row
+  Write-Host "  $lastRow rows x $lastCol cols"
+
+  $range = $ws.Range($ws.Cells(1, 1), $ws.Cells($lastRow, $lastCol))
+  $vals = $range.Value2
+
+  $sb = New-Object System.Text.StringBuilder
+  [void]$sb.Append('{"header":[')
+  $c = 1
+  while ($c -le $lastCol) {
+    if ($c -gt 1) { [void]$sb.Append(',') }
+    $cellStr = ([string]$vals.GetValue(1, $c)).Replace('\', '\\').Replace('"', '\"')
+    [void]$sb.Append('"' + $cellStr + '"')
+    $c++
+  }
+  [void]$sb.Append('],"rows":[')
+
+  $r = 2
+  while ($r -le $lastRow) {
+    if ($r -gt 2) { [void]$sb.Append(',') }
+    [void]$sb.Append('[')
+    $c = 1
+    while ($c -le $lastCol) {
+      if ($c -gt 1) { [void]$sb.Append(',') }
+      $cellVal = $vals.GetValue($r, $c)
+      if ($null -eq $cellVal) {
+        [void]$sb.Append('null')
+      } elseif ($cellVal -is [double]) {
+        [void]$sb.Append([string]$cellVal)
+      } else {
+        $cellStr = [string]$cellVal
+        $cellStr = $cellStr.Replace('\', '\\').Replace('"', '\"')
+        $cellStr = [System.Text.RegularExpressions.Regex]::Replace($cellStr, '[\x00-\x1F]', ' ')
+        [void]$sb.Append('"' + $cellStr + '"')
+      }
+      $c++
+    }
+    [void]$sb.Append(']')
+    if (($r % 5000) -eq 0) { Write-Host "  ...$r rows processed" }
+    $r++
+  }
+  [void]$sb.Append(']}')
+
+  $noBomUtf8 = New-Object System.Text.UTF8Encoding $false
+  [System.IO.File]::WriteAllText((Join-Path $workDir "data_sheet.json"), $sb.ToString(), $noBomUtf8)
+  Write-Host "  Wrote data_sheet.json"
+
+  # --- 2. Exchange Rate sheet -> "Platium Buy Rate : Foreign Currency => USD"
+  #        table only -> JSON (the HKD-rate table next to it is dropped) ---
+  # Locate the table by its own label instead of hardcoding row/column numbers,
+  # so this keeps working if the sheet layout shifts in a future month's file.
+  Write-Host "Extracting Exchange Rate (Platium Buy Rate USD) table..."
+  $wsRate = $wb.Worksheets.Item("Exchange Rate")
+  $rateLabel = "Platium Buy Rate : Foreign Currency => USD"
+  $labelCell = $wsRate.Cells.Find($rateLabel)
+  if (-not $labelCell) { throw "Could not find '$rateLabel' label in Exchange Rate sheet" }
+  $rateHeaderRow = $labelCell.Row + 1
+  $rateStartCol = $labelCell.Column
+  $rateNumCols = 12  # yyyy-mm + AUD,CAD,CNY,EUR,GBP,JPY,NTD,THB,USD,HKD,PEN
+  $rateEndCol = $rateStartCol + $rateNumCols - 1
+
+  $rateSb = New-Object System.Text.StringBuilder
+  [void]$rateSb.Append('{"header":[')
+  for ($c = $rateStartCol; $c -le $rateEndCol; $c++) {
+    if ($c -gt $rateStartCol) { [void]$rateSb.Append(',') }
+    $cellStr = ($wsRate.Cells($rateHeaderRow, $c).Text).Trim().Replace('\', '\\').Replace('"', '\"')
+    [void]$rateSb.Append('"' + $cellStr + '"')
+  }
+  [void]$rateSb.Append('],"rows":[')
+
+  $r = $rateHeaderRow + 1
+  $rateFirstRow = $true
+  while ($wsRate.Cells($r, $rateStartCol).Text.Trim() -ne "") {
+    if (-not $rateFirstRow) { [void]$rateSb.Append(',') }
+    $rateFirstRow = $false
+    [void]$rateSb.Append('[')
+    for ($c = $rateStartCol; $c -le $rateEndCol; $c++) {
+      if ($c -gt $rateStartCol) { [void]$rateSb.Append(',') }
+      if ($c -eq $rateStartCol) {
+        # yyyy-mm is a text label, not a real Excel date - always read via .Text.
+        $cellStr = ($wsRate.Cells($r, $c).Text).Trim().Replace('\', '\\').Replace('"', '\"')
+        [void]$rateSb.Append('"' + $cellStr + '"')
+      } else {
+        $cellVal = $wsRate.Cells($r, $c).Value2
+        if ($null -eq $cellVal) {
+          [void]$rateSb.Append('null')
+        } elseif ($cellVal -is [double]) {
+          [void]$rateSb.Append([string]$cellVal)
+        } else {
+          $cellStr = ([string]$cellVal).Replace('\', '\\').Replace('"', '\"')
+          [void]$rateSb.Append('"' + $cellStr + '"')
+        }
+      }
+    }
+    [void]$rateSb.Append(']')
+    $r++
+  }
+  [void]$rateSb.Append(']}')
+
+  [System.IO.File]::WriteAllText((Join-Path $workDir "exrate_platinum_usd.json"), $rateSb.ToString(), $noBomUtf8)
+  Write-Host "  $($r - $rateHeaderRow - 1) rows x $rateNumCols cols -> exrate_platinum_usd.json"
+
+  $wb.Close($false)
+} finally {
+  # Release COM references in reverse order of creation before Quit, so no
+  # lingering RCW keeps an invisible EXCEL.EXE process alive after this script exits.
+  if ($labelCell) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($labelCell) | Out-Null }
+  if ($wsRate) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($wsRate) | Out-Null }
+  if ($range) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($range) | Out-Null }
+  if ($ws) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($ws) | Out-Null }
+  if ($wb) { [System.Runtime.InteropServices.Marshal]::ReleaseComObject($wb) | Out-Null }
+  $excel.Quit()
+  [System.Runtime.InteropServices.Marshal]::ReleaseComObject($excel) | Out-Null
+  Remove-Variable range, ws, wb, excel, wsRate, labelCell -ErrorAction SilentlyContinue
+  [GC]::Collect()
+  [GC]::WaitForPendingFinalizers()
+}
+
+# --- 3. Assemble the final combined HTML report ---
+Write-Host "Building combined HTML report..."
+& node (Join-Path $scriptDir "build_report.js") $workDir $OutputPath
+if ($LASTEXITCODE -ne 0) {
+  throw "build_report.js failed with exit code $LASTEXITCODE"
+}
+
+Remove-Item $workDir -Recurse -Force
+Write-Host "Done: $OutputPath"
+
+if ($Publish) {
+  Copy-Item -Path $OutputPath -Destination $publishedPath -Force
+  Write-Host "Published: $publishedPath"
+}

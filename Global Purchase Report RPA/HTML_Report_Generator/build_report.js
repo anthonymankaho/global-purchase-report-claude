@@ -89,8 +89,16 @@ th, td { white-space: nowrap; }
 .toolbar { margin-bottom: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 #exportBtn, #clearFiltersBtn { padding: 6px 14px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); }
 .filter-group { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); }
-.filter-group select { font-size: 11px; padding: 3px 4px; border-radius: 3px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); max-width: 160px; }
-body[data-theme="dark"] .filter-group select { background: var(--input-bg); color: var(--text); border-color: var(--border); }
+/* Searchable single-select (same look/interaction as the checkbox multi-selects
+   elsewhere in the report) - .ms/.ms-toggle/.ms-panel/.ms-search are the shared
+   class names, .ms-option is this variant's own clickable (not checkbox) row. */
+.ms { position: relative; width: 170px; }
+.ms-toggle { width: 100%; text-align: left; padding: 5px 8px; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 11px; }
+.ms-panel { position: absolute; z-index: 20; top: 100%; left: 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; box-shadow: 0 2px 8px var(--shadow); max-height: 260px; overflow-y: auto; width: 220px; padding: 6px; }
+.ms-search { display: block; width: 100%; box-sizing: border-box; margin-bottom: 6px; padding: 5px 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--input-bg); color: var(--text); }
+.ms-option { display: block; font-size: 12px; padding: 4px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); cursor: pointer; border-radius: 3px; }
+.ms-option:hover { background: var(--hover-bg); }
+.ms-option.ms-selected { background: var(--accent); color: #fff; font-weight: bold; }
 
 body[data-theme="dark"] table.dataTable tbody tr { background-color: var(--card-bg); color: var(--text); }
 body[data-theme="dark"] table.dataTable tbody tr.odd,
@@ -146,6 +154,81 @@ function regexEscape(s) {
   specials.forEach(function (c) { str = str.split(c).join('\\\\' + c); });
   return str;
 }
+// Searchable single-select: same look/interaction as the checkbox multi-selects
+// used elsewhere in the report (toggle button + dropdown panel with a type-to-
+// filter search box), but picks exactly one value (or '' for "All") and closes
+// on click. onSelect fires only on a user click, never from setValue() - callers
+// that programmatically clear/reset a filter (Clear all filters, drill-down)
+// call setValue() themselves and are already responsible for re-running the
+// actual DataTables .search()/.draw(), so onSelect firing too would double it up.
+function createSearchableSelect(container, values, onSelect) {
+  var toggle = document.createElement('button');
+  toggle.type = 'button';
+  toggle.className = 'ms-toggle';
+  container.appendChild(toggle);
+
+  var panel = document.createElement('div');
+  panel.className = 'ms-panel';
+  panel.style.display = 'none';
+  panel.addEventListener('click', function (e) { e.stopPropagation(); });
+  container.appendChild(panel);
+
+  var searchBox = document.createElement('input');
+  searchBox.type = 'text';
+  searchBox.className = 'ms-search';
+  searchBox.placeholder = 'Search...';
+  searchBox.addEventListener('click', function (e) { e.stopPropagation(); });
+  panel.appendChild(searchBox);
+
+  var currentValue = '';
+  var options = [];
+  function addOption(v, label) {
+    var opt = document.createElement('div');
+    opt.className = 'ms-option';
+    opt.textContent = label;
+    opt.addEventListener('click', function () {
+      setValue(v);
+      panel.style.display = 'none';
+      onSelect(v);
+    });
+    panel.appendChild(opt);
+    options.push({ el: opt, value: v, searchText: label.toLowerCase() });
+  }
+  addOption('', 'All');
+  values.forEach(function (v) { addOption(v, v); });
+
+  function setValue(v) {
+    currentValue = v;
+    toggle.textContent = (v === '' ? 'All' : v) + ' ▾';
+    options.forEach(function (o) { o.el.classList.toggle('ms-selected', o.value === v); });
+  }
+  setValue('');
+
+  searchBox.addEventListener('input', function () {
+    var q = searchBox.value.toLowerCase();
+    options.forEach(function (o) {
+      if (o.value === '') return; // "All" always stays visible
+      o.el.style.display = o.searchText.indexOf(q) === -1 ? 'none' : '';
+    });
+  });
+
+  toggle.addEventListener('click', function (e) {
+    e.stopPropagation();
+    document.querySelectorAll('.ms-panel').forEach(function (p) { if (p !== panel) p.style.display = 'none'; });
+    var opening = panel.style.display === 'none';
+    panel.style.display = opening ? 'block' : 'none';
+    if (opening) {
+      searchBox.value = '';
+      options.forEach(function (o) { o.el.style.display = ''; });
+      searchBox.focus();
+    }
+  });
+
+  return { getValue: function () { return currentValue; }, setValue: setValue };
+}
+document.addEventListener('click', function () {
+  document.querySelectorAll('.ms-panel').forEach(function (p) { p.style.display = 'none'; });
+});
 $(function () {
   var headRow = document.getElementById('dataTableHeadRow');
   HEADER.forEach(function (h) {
@@ -161,6 +244,7 @@ $(function () {
   // box of an in-table filter row - nothing was wrong with it, it just weighed in at
   // horizontal position ~3500px on a page nobody scrolls that far right on by default.
   var toolbarFilters = document.getElementById('toolbarFilters');
+  var toolbarSelects = {}; // colIdx -> createSearchableSelect() instance, for reset/drill-down
   var table = $('#dataTable').DataTable({
     data: ROWS, deferRender: true, pageLength: 50,
     lengthMenu: [25, 50, 100, 500, 1000],
@@ -173,28 +257,19 @@ $(function () {
         group.className = 'filter-group';
         var label = document.createElement('label');
         label.textContent = HEADER[colIdx] + ':';
-        var sel = document.createElement('select');
-        sel.dataset.colIndex = colIdx;
-        var optAll = document.createElement('option');
-        optAll.value = ''; optAll.textContent = 'All';
-        sel.appendChild(optAll);
+        var msContainer = document.createElement('span');
+        msContainer.className = 'ms';
         var values = api.column(colIdx).data().toArray().map(function (v) {
           return (v === null || v === undefined) ? '' : String(v);
         });
         var unique = values.filter(function (v, i) { return v !== '' && values.indexOf(v) === i; }).sort();
-        unique.forEach(function (v) {
-          var opt = document.createElement('option');
-          opt.value = v; opt.textContent = v;
-          sel.appendChild(opt);
-        });
-        sel.addEventListener('change', function () {
-          var val = sel.value;
+        toolbarSelects[colIdx] = createSearchableSelect(msContainer, unique, function (val) {
           var column = api.column(colIdx);
           if (val === '') { column.search(''); } else { column.search('^' + regexEscape(val) + '\$', true, false); }
           api.draw();
         });
         group.appendChild(label);
-        group.appendChild(sel);
+        group.appendChild(msContainer);
         toolbarFilters.appendChild(group);
       });
     }
@@ -203,8 +278,7 @@ $(function () {
     table.search('');
     FILTER_COL_IDX.forEach(function (colIdx) {
       table.column(colIdx).search('');
-      var sel = toolbarFilters.querySelector('select[data-col-index="' + colIdx + '"]');
-      if (sel) sel.value = '';
+      if (toolbarSelects[colIdx]) toolbarSelects[colIdx].setValue('');
     });
     table.draw();
     var banner = document.getElementById('externalFilterBanner');
@@ -222,8 +296,7 @@ $(function () {
       if (!Array.isArray(vals)) vals = [vals];
       var pattern = '^(' + vals.map(regexEscape).join('|') + ')\$';
       table.column(colIdx).search(pattern, true, false);
-      var sel = toolbarFilters.querySelector('select[data-col-index="' + colIdx + '"]');
-      if (sel) sel.value = '';
+      if (toolbarSelects[colIdx]) toolbarSelects[colIdx].setValue('');
     });
     table.draw();
     var descr = Object.keys(filterMap).map(function (k) {
@@ -304,7 +377,7 @@ const filteredSheetsHtml = {};
 // =========================================================================
 const PIVOT_HEADER = ['ITEM_CODE', 'Std Part Desc', 'Max_DB', 'Max Vendor', 'Max_PO_Price(USD)', 'Min_DB', 'Min Vendor', 'Min_PO_Price(USD)', '', 'DB', 'Vendor', 'Avg PO Price(USD)', 'Tot PO Price(USD)'];
 
-function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthValues, stdCommValues, vendorValues, itemCodeValues, statusValues, prodFamiValues, header, addColDivider) {
+function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthValues, stdCommValues, vendorValues, itemCodeValues, statusValues, prodFamiValues, prodFamiCodeValues, prodFamilyFittingsCodeValues, prodFamilyFittingsCodeLabel, header, addColDivider) {
   const chartRowsJsonStr = neutralize(JSON.stringify(itemRows));
   const dbValuesJsonStr = neutralize(JSON.stringify(dbValues));
   const monthValuesJsonStr = neutralize(JSON.stringify(monthValues));
@@ -313,6 +386,8 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
   const itemCodeValuesJsonStr = neutralize(JSON.stringify(itemCodeValues));
   const statusValuesJsonStr = neutralize(JSON.stringify(statusValues));
   const prodFamiValuesJsonStr = neutralize(JSON.stringify(prodFamiValues));
+  const prodFamiCodeValuesJsonStr = neutralize(JSON.stringify(prodFamiCodeValues));
+  const prodFamilyFittingsCodeValuesJsonStr = neutralize(JSON.stringify(prodFamilyFittingsCodeValues));
   const headerJsonStr = neutralize(JSON.stringify(header));
 
   return `<!doctype html>
@@ -339,7 +414,15 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
      gets ellipsis truncation + a title tooltip for the full value, since a
      user can drag any column narrower than its content. */
   #dataTable { table-layout: fixed; }
-  #dataTable td, #dataTable th { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* box-sizing: border-box is essential here - DataTables reserves an extra 26px
+     of padding-right on every SORTABLE header cell (for the sort-direction arrow
+     icon), on top of the compact class's own 4px padding. Without border-box, that
+     padding is ADDED to each th's specified inline width, so 13 columns worth of
+     "hidden" padding silently blew the table ~370px past its intended 1366px-laptop
+     budget (found via an actual rendered-width measurement, not visible from CSS
+     alone) - the non-sortable +/- toggle column, with no icon reserved, was the
+     one column that DIDN'T grow, which is what gave this away. */
+  #dataTable td, #dataTable th { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-sizing: border-box; }
   #dataTable th { position: relative; }
   .col-resize-handle { position: absolute; right: 0; top: 0; bottom: 0; width: 8px; cursor: col-resize; user-select: none; z-index: 5; }
   .col-resize-handle:hover, .col-resize-handle.resizing { background: var(--accent); opacity: 0.5; }
@@ -366,6 +449,7 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
   .ms { position: relative; width: 180px; }
   .ms-toggle { width: 100%; text-align: left; padding: 5px 8px; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 12px; }
   .ms-panel { position: absolute; z-index: 20; top: 100%; left: 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; box-shadow: 0 2px 8px var(--shadow); max-height: 260px; overflow-y: auto; width: 240px; padding: 6px; }
+  .ms-search { display: block; width: 100%; box-sizing: border-box; margin-bottom: 6px; padding: 5px 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--input-bg); color: var(--text); }
   .ms-panel label { display: block; font-size: 12px; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
   .ms-panel label.ms-all-row { border-bottom: 1px solid var(--border-light); margin-bottom: 4px; padding-bottom: 6px; font-weight: bold; }
   .item-toggle { cursor: pointer; display: inline-block; width: 16px; text-align: center; border: 1px solid var(--border); border-radius: 2px; font-weight: bold; user-select: none; }
@@ -404,6 +488,8 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
   <div><label class="fl">Item Code</label><div class="ms" id="ms-itemcode"></div></div>
   <div><label class="fl">Ignore / Consider</label><div class="ms" id="ms-status"></div></div>
   ${prodFamiValues.length ? '<div><label class="fl">ProdFamiDesc</label><div class="ms" id="ms-prodfami"></div></div>' : ''}
+  ${prodFamiCodeValues.length ? '<div><label class="fl">ProdFamiCode</label><div class="ms" id="ms-prodfamicode"></div></div>' : ''}
+  ${prodFamilyFittingsCodeValues.length ? '<div><label class="fl">' + prodFamilyFittingsCodeLabel + '</label><div class="ms" id="ms-prodfamilyfittingscode"></div></div>' : ''}
   <div style="align-self:flex-end"><button id="resetBtn">Reset filters</button></div>
 </div>
 <div class="charts">
@@ -423,7 +509,7 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
 <script>${dataTablesJs}</script>
 <script>${chartJs}</script>
 <script>
-var CHART_ROWS = ${chartRowsJsonStr}; // [DB, month, TOT_PO_PRICE_USD, ITEM_CODE, Std Part Desc, Std Vendor Name, PO_PRICE_USD, REC_QTY, Std Comm, ignore/consider, ProdFamiDesc]
+var CHART_ROWS = ${chartRowsJsonStr}; // [DB, month, TOT_PO_PRICE_USD, ITEM_CODE, Std Part Desc, Std Vendor Name, PO_PRICE_USD, REC_QTY, Std Comm, ignore/consider, ProdFamiDesc, ProdFamiCode]
 var DB_VALUES = ${dbValuesJsonStr};
 var MONTH_VALUES = ${monthValuesJsonStr};
 var STDCOMM_VALUES = ${stdCommValuesJsonStr};
@@ -431,6 +517,8 @@ var VENDOR_VALUES = ${vendorValuesJsonStr};
 var ITEMCODE_VALUES = ${itemCodeValuesJsonStr};
 var STATUS_VALUES = ${statusValuesJsonStr};
 var PRODFAMI_VALUES = ${prodFamiValuesJsonStr};
+var PRODFAMICODE_VALUES = ${prodFamiCodeValuesJsonStr};
+var PRODFAMILYFITTINGSCODE_VALUES = ${prodFamilyFittingsCodeValuesJsonStr};
 var HEADER = ${headerJsonStr};
 var DB_COLORS = ['#005daa', '#c0392b', '#27ae60', '#e67e22', '#8e44ad', '#16a085', '#d35400', '#7f8c8d'];
 // Fixed DB -> color mapping (by full DB_VALUES list, not by whatever subset happens
@@ -495,6 +583,17 @@ function createMultiSelect(containerId, values, onChange, defaultSelected, label
   panel.addEventListener('click', function (e) { e.stopPropagation(); });
   container.appendChild(panel);
 
+  // Search box: filters which option rows are VISIBLE as you type (substring,
+  // case-insensitive, matched against each option's own display label). It never
+  // changes what's checked - typing to narrow a long list (e.g. vendor names)
+  // then checking a few, clearing the search still shows every previous check.
+  var searchBox = document.createElement('input');
+  searchBox.type = 'text';
+  searchBox.className = 'ms-search';
+  searchBox.placeholder = 'Search...';
+  searchBox.addEventListener('click', function (e) { e.stopPropagation(); });
+  panel.appendChild(searchBox);
+
   var allRow = document.createElement('label');
   allRow.className = 'ms-all-row';
   var allCb = document.createElement('input');
@@ -510,6 +609,7 @@ function createMultiSelect(containerId, values, onChange, defaultSelected, label
   // while the checkbox's own value - what filtering matches against - stays
   // the raw underlying value.
   var checkboxes = [];
+  var optionRows = [];
   values.forEach(function (v) {
     var row = document.createElement('label');
     var cb = document.createElement('input');
@@ -520,6 +620,11 @@ function createMultiSelect(containerId, values, onChange, defaultSelected, label
     row.appendChild(document.createTextNode(' ' + (labelMap && labelMap[v] ? labelMap[v] : v)));
     panel.appendChild(row);
     checkboxes.push(cb);
+    optionRows.push({ row: row, searchText: String(displayLabel(v)).toLowerCase() });
+  });
+  searchBox.addEventListener('input', function () {
+    var q = searchBox.value.toLowerCase();
+    optionRows.forEach(function (o) { o.row.style.display = o.searchText.indexOf(q) === -1 ? 'none' : ''; });
   });
   var initCheckedOnes = checkboxes.filter(function (c) { return c.checked; });
   if (initCheckedOnes.length === checkboxes.length || initCheckedOnes.length === 0) {
@@ -567,7 +672,13 @@ function createMultiSelect(containerId, values, onChange, defaultSelected, label
   toggle.addEventListener('click', function (e) {
     e.stopPropagation();
     document.querySelectorAll('.ms-panel').forEach(function (p) { if (p !== panel) p.style.display = 'none'; });
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    var opening = panel.style.display === 'none';
+    panel.style.display = opening ? 'block' : 'none';
+    if (opening) {
+      searchBox.value = '';
+      optionRows.forEach(function (o) { o.row.style.display = ''; });
+      searchBox.focus();
+    }
   });
 
   updateToggleText();
@@ -578,6 +689,8 @@ function createMultiSelect(containerId, values, onChange, defaultSelected, label
       selected = new Set();
       allCb.checked = true;
       checkboxes.forEach(function (cb) { cb.checked = true; });
+      searchBox.value = '';
+      optionRows.forEach(function (o) { o.row.style.display = ''; });
       updateToggleText();
     }
   };
@@ -624,11 +737,16 @@ var msStatus = createMultiSelect('ms-status', STATUS_VALUES, function () { rende
   Ignore: 'Ignore (Intercompany transaction)',
   Consider: 'Consider (Real transaction)'
 });
-// ProdFamiDesc is only meaningful for GLID/Fittings today (Packaging/Coating's
-// ProdFamiDesc is 100% blank) - PRODFAMI_VALUES comes out empty for those pages,
-// the #ms-prodfami container isn't even rendered in that case, so skip creating
-// the widget entirely rather than erroring on a missing container.
+// ProdFamiDesc/ProdFamiCode are only meaningful for GLID/Fittings today
+// (Packaging/Coating's values are 100% blank) - PRODFAMI_VALUES/PRODFAMICODE_VALUES
+// come out empty for those pages, the container isn't even rendered in that case,
+// so skip creating the widget entirely rather than erroring on a missing container.
 var msProdFami = PRODFAMI_VALUES.length ? createMultiSelect('ms-prodfami', PRODFAMI_VALUES, function () { renderCharts(); }) : null;
+var msProdFamiCode = PRODFAMICODE_VALUES.length ? createMultiSelect('ms-prodfamicode', PRODFAMICODE_VALUES, function () { renderCharts(); }) : null;
+// ProdFamilyFittingsCode is Fittings-only per Joe's explicit request (the Node-side
+// loop force-empties PRODFAMILYFITTINGSCODE_VALUES for every other page even though
+// the underlying data isn't actually blank there), so the same empty-array skip works.
+var msProdFamilyFittingsCode = PRODFAMILYFITTINGSCODE_VALUES.length ? createMultiSelect('ms-prodfamilyfittingscode', PRODFAMILYFITTINGSCODE_VALUES, function () { renderCharts(); }) : null;
 
 // Per-item collapse state for the DB/Vendor/Avg/Tot breakdown rows: an item with
 // multiple DB/Vendor sub-rows can be collapsed down to just its top (highest Avg
@@ -674,8 +792,10 @@ function renderCharts() {
   var selItemCode = msItemCode.getSelected();
   var selStatus = msStatus.getSelected();
   var selProdFami = msProdFami ? msProdFami.getSelected() : [];
+  var selProdFamiCode = msProdFamiCode ? msProdFamiCode.getSelected() : [];
+  var selProdFamilyFittingsCode = msProdFamilyFittingsCode ? msProdFamilyFittingsCode.getSelected() : [];
   var rows = CHART_ROWS.filter(function (r) {
-    return matchesFilter(r[1], selMonth) && matchesFilter(r[0], selDb) && matchesFilter(r[8], selStdComm) && matchesFilter(r[5], selVendor) && matchesFilter(String(r[3]), selItemCode) && matchesFilter(r[9], selStatus) && matchesFilter(r[10], selProdFami);
+    return matchesFilter(r[1], selMonth) && matchesFilter(r[0], selDb) && matchesFilter(r[8], selStdComm) && matchesFilter(r[5], selVendor) && matchesFilter(String(r[3]), selItemCode) && matchesFilter(r[9], selStatus) && matchesFilter(r[10], selProdFami) && matchesFilter(r[11], selProdFamiCode) && matchesFilter(r[12], selProdFamilyFittingsCode);
   });
 
   // Chart 1: By Month (GLID) - Total line + shadow bars per DB
@@ -772,23 +892,44 @@ function applyTheme(theme) {
 }
 
 // Column widths are user-resizable (drag the handle on a header's right edge).
-// DEFAULT_COL_WIDTHS matches HEADER's fixed order 1:1 (same for all four of
-// GLID/Fittings/Packaging/Coating, since they share this exact header) - these
-// starting values were measured off the compact layout's own natural sizing,
-// so switching to table-layout:fixed here doesn't visually jump on first load.
+// BASE_COL_WIDTHS matches HEADER's fixed order 1:1 (same for all four of
+// GLID/Fittings/Packaging/Coating, since they share this exact header). The
+// actual default is scaled against the user's available table width so common
+// laptop screens and narrower browser windows still start with all columns
+// visible without horizontal scrolling. Once a user drags a column, those
+// manual widths are preserved until they reset.
+var BASE_COL_WIDTHS = [91, 204, 74, 92, 134, 72, 92, 132, 28, 72, 92, 122, 120];
 var DEFAULT_COL_WIDTHS = [91, 204, 74, 92, 134, 72, 92, 132, 28, 72, 92, 122, 120];
-var COL_WIDTHS_KEY = 'gprPivotColWidths';
+var COL_WIDTHS_KEY = 'gprPivotColWidths_v2';
+function calcResponsiveDefaultColWidths() {
+  var container = document.querySelector('.table-box') || document.body;
+  var containerWidth = container.clientWidth || document.documentElement.clientWidth || window.innerWidth || 1366;
+  var horizontalPadding = 24; // .table-box has 12px left + 12px right padding.
+  var availableWidth = Math.max(320, containerWidth - horizontalPadding);
+  var baseTotal = BASE_COL_WIDTHS.reduce(function (sum, w) { return sum + w; }, 0);
+  var scale = availableWidth / baseTotal;
+  scale = Math.max(0.70, Math.min(1.20, scale));
+  return BASE_COL_WIDTHS.map(function (w) { return Math.max(24, Math.floor(w * scale)); });
+}
+DEFAULT_COL_WIDTHS = calcResponsiveDefaultColWidths();
 function loadColWidths() {
   try {
     var saved = JSON.parse(localStorage.getItem(COL_WIDTHS_KEY) || 'null');
-    if (Array.isArray(saved) && saved.length === HEADER.length) return saved;
+    if (saved && saved.manual === true && Array.isArray(saved.widths) && saved.widths.length === HEADER.length) {
+      return { widths: saved.widths, manual: true };
+    }
   } catch (e) {}
-  return DEFAULT_COL_WIDTHS.slice();
+  return { widths: DEFAULT_COL_WIDTHS.slice(), manual: false };
 }
-function saveColWidths(widths) {
-  try { localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify(widths)); } catch (e) {}
+function saveColWidths(widths, manual) {
+  try { localStorage.setItem(COL_WIDTHS_KEY, JSON.stringify({ widths: widths, manual: manual === true })); } catch (e) {}
 }
-var colWidths = loadColWidths();
+function applyColWidths(widths) {
+  headerThs.forEach(function (th, i) { th.style.width = (widths[i] || DEFAULT_COL_WIDTHS[i] || 90) + 'px'; });
+}
+var loadedColWidths = loadColWidths();
+var colWidths = loadedColWidths.widths;
+var hasManualColWidths = loadedColWidths.manual;
 
 var headRow = document.getElementById('dataTableHeadRow');
 var headerThs = [];
@@ -823,7 +964,8 @@ HEADER.forEach(function (h, i) {
   function onMouseUp() {
     if (dragColIndex === null) return;
     colWidths[dragColIndex] = parseInt(headerThs[dragColIndex].style.width, 10);
-    saveColWidths(colWidths);
+    hasManualColWidths = true;
+    saveColWidths(colWidths, true);
     var handle = headerThs[dragColIndex].querySelector('.col-resize-handle');
     if (handle) handle.classList.remove('resizing');
     dragColIndex = null;
@@ -844,11 +986,19 @@ HEADER.forEach(function (h, i) {
     });
   });
   document.getElementById('resetColWidthsBtn').addEventListener('click', function () {
+    DEFAULT_COL_WIDTHS = calcResponsiveDefaultColWidths();
     colWidths = DEFAULT_COL_WIDTHS.slice();
-    saveColWidths(colWidths);
-    headerThs.forEach(function (th, i) { th.style.width = DEFAULT_COL_WIDTHS[i] + 'px'; });
+    hasManualColWidths = false;
+    saveColWidths(colWidths, false);
+    applyColWidths(colWidths);
   });
 })();
+window.addEventListener('resize', function () {
+  if (hasManualColWidths) return;
+  DEFAULT_COL_WIDTHS = calcResponsiveDefaultColWidths();
+  colWidths = DEFAULT_COL_WIDTHS.slice();
+  applyColWidths(colWidths);
+});
 var dataTable = $('#dataTable').DataTable({
   data: [], deferRender: true, pageLength: 50,
   // scrollX off and autoWidth off: this table's 13 columns fit comfortably
@@ -953,6 +1103,8 @@ renderCharts();
 document.getElementById('resetBtn').onclick = function () {
   msMonth.reset(); msDb.reset(); msStdComm.reset(); msVendor.reset(); msItemCode.reset(); msStatus.reset();
   if (msProdFami) msProdFami.reset();
+  if (msProdFamiCode) msProdFamiCode.reset();
+  if (msProdFamilyFittingsCode) msProdFamilyFittingsCode.reset();
   renderCharts();
 };
 
@@ -987,16 +1139,16 @@ for (const f of FILTER_SHEETS) {
   // a client-side filter (mirroring Excel's own PivotTable "ignore / consider"
   // page filter), defaulting to Consider only so today's scope is unchanged.
   const flatRows = dataSheet.rows.filter(r => set.has(r[stdCommIdx]));
-  // rows: [DB, month, totUsd, ITEM_CODE, Std Part Desc, Std Vendor Name, PO_PRICE_USD, REC_QTY, Std Comm, ignore/consider, ProdFamiDesc]
+  // rows: [DB, month, totUsd, ITEM_CODE, Std Part Desc, Std Vendor Name, PO_PRICE_USD, REC_QTY, Std Comm, ignore/consider, ProdFamiDesc, ProdFamiCode, ProdFamilyFittingsCode]
   // (0,1,2 feed the charts; 3-8 feed the dynamic item-level table computed client-side
   // from these live rows, so all filters apply here too instead of relying on Excel's
-  // static, already-all-months-aggregated pivot cache; 9,10 are filter-only, like 0/1/5/8)
+  // static, already-all-months-aggregated pivot cache; 9,10,11,12 are filter-only, like 0/1/5/8)
   const itemRows = flatRows.map(r => [
     r[COL['DB']], r[COL['yyyy-mm']], typeof r[COL['TOT_PO_PRICE_USD']] === 'number' ? r[COL['TOT_PO_PRICE_USD']] : 0,
     r[COL['ITEM_CODE']], r[COL['Std Part Desc']], r[COL['Std Vendor Name']],
     typeof r[COL['PO_PRICE_USD']] === 'number' ? r[COL['PO_PRICE_USD']] : null,
     typeof r[COL['REC_QTY']] === 'number' ? r[COL['REC_QTY']] : 0,
-    r[COL['Std Comm']], r[statusIdx], r[COL['ProdFamiDesc']]
+    r[COL['Std Comm']], r[statusIdx], r[COL['ProdFamiDesc']], r[COL['ProdFamiCode']], r[COL['ProdFamilyFittingsCode']]
   ]);
   const dbValues = Array.from(new Set(itemRows.map(r => r[0]))).filter(Boolean).sort();
   const monthValues = Array.from(new Set(itemRows.map(r => r[1]))).filter(Boolean).sort();
@@ -1007,16 +1159,29 @@ for (const f of FILTER_SHEETS) {
   // checkbox values (always strings) on both sides.
   const itemCodeValues = Array.from(new Set(itemRows.map(r => String(r[3])))).filter(Boolean).sort();
   const statusValues = Array.from(new Set(itemRows.map(r => r[9]))).filter(Boolean).sort();
-  // ProdFamiDesc filter: only meaningful for GLID/Fittings today - Packaging/Coating's
-  // ProdFamiDesc is 100% blank (checked directly against the real data), so this
-  // naturally comes out empty for them and the filter UI is skipped entirely (see
-  // buildPivotPageHtml's own empty-array check) rather than showing an unusable filter.
+  // ProdFamiDesc/ProdFamiCode filters: only meaningful for GLID/Fittings today -
+  // Packaging/Coating's values are 100% blank (checked directly against the real
+  // data, confirmed for both columns), so this naturally comes out empty for them
+  // and the filter UI is skipped entirely (see buildPivotPageHtml's own
+  // empty-array check) rather than showing an unusable filter.
   const prodFamiValues = Array.from(new Set(itemRows.map(r => r[10]))).filter(Boolean).sort();
+  const prodFamiCodeValues = Array.from(new Set(itemRows.map(r => r[11]))).filter(Boolean).sort();
+  // ProdFamilyFittingsCode: explicitly Fittings + GLID only per Joe's request, even
+  // though the underlying data isn't actually blank for Packaging/Coating too in
+  // some cases - so this can't rely on the "naturally empty elsewhere" trick above
+  // and is force-emptied for every other page regardless of its real values. Same
+  // underlying column for both pages - only the LABEL shown to the user differs
+  // (GLID sees "ProdFamilyGLIDCode", Fittings sees "ProdFamilyFittingsCode").
+  const PROD_FAMILY_FITTINGS_CODE_PAGES = { Fittings: 'ProdFamilyFittingsCode', GLID: 'ProdFamilyGLIDCode' };
+  const prodFamilyFittingsCodeValues = PROD_FAMILY_FITTINGS_CODE_PAGES[f.name]
+    ? Array.from(new Set(itemRows.map(r => r[12]))).filter(Boolean).sort()
+    : [];
+  const prodFamilyFittingsCodeLabel = PROD_FAMILY_FITTINGS_CODE_PAGES[f.name] || 'ProdFamilyFittingsCode';
   // Column dividers between the 4 groups: ITEM_CODE/Std Part Desc | Max Vendor/Max
   // Price | Min Vendor/Min Price | DB/Vendor/Avg/Tot - confirmed identical layout
   // across all 4 pages, so applied to all of them now (no longer GLID-only).
   const addColDivider = true;
-  filteredSheetsHtml[f.name] = buildPivotPageHtml(f.name, f.stdComm.join(', '), itemRows, dbValues, monthValues, stdCommValues, vendorValues, itemCodeValues, statusValues, prodFamiValues, PIVOT_HEADER, addColDivider);
+  filteredSheetsHtml[f.name] = buildPivotPageHtml(f.name, f.stdComm.join(', '), itemRows, dbValues, monthValues, stdCommValues, vendorValues, itemCodeValues, statusValues, prodFamiValues, prodFamiCodeValues, prodFamilyFittingsCodeValues, prodFamilyFittingsCodeLabel, PIVOT_HEADER, addColDivider);
   console.log(f.name + ':', itemRows.length, 'flat rows (dynamic item table + charts)');
 }
 
@@ -1103,6 +1268,7 @@ const dashboardHtml = `<!doctype html>
   .ms { position: relative; width: 180px; }
   .ms-toggle { width: 100%; text-align: left; padding: 5px 8px; background: var(--input-bg); color: var(--text); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; font-size: 12px; }
   .ms-panel { position: absolute; z-index: 20; top: 100%; left: 0; background: var(--card-bg); border: 1px solid var(--border); border-radius: 4px; box-shadow: 0 2px 8px var(--shadow); max-height: 260px; overflow-y: auto; width: 240px; padding: 6px; }
+  .ms-search { display: block; width: 100%; box-sizing: border-box; margin-bottom: 6px; padding: 5px 8px; font-size: 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--input-bg); color: var(--text); }
   .ms-panel label { display: block; font-size: 12px; padding: 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
   .ms-panel label.ms-all-row { border-bottom: 1px solid var(--border-light); margin-bottom: 4px; padding-bottom: 6px; font-weight: bold; }
   table.dataTable { font-size: 12px; color: var(--text); }
@@ -1214,6 +1380,17 @@ function createMultiSelect(containerId, values, onChange, labelMap) {
   panel.addEventListener('click', function (e) { e.stopPropagation(); });
   container.appendChild(panel);
 
+  // Search box: filters which option rows are VISIBLE as you type (substring,
+  // case-insensitive, matched against each option's own display label). It never
+  // changes what's checked - typing to narrow a long list (e.g. vendor names)
+  // then checking a few, clearing the search still shows every previous check.
+  var searchBox = document.createElement('input');
+  searchBox.type = 'text';
+  searchBox.className = 'ms-search';
+  searchBox.placeholder = 'Search...';
+  searchBox.addEventListener('click', function (e) { e.stopPropagation(); });
+  panel.appendChild(searchBox);
+
   var allRow = document.createElement('label');
   allRow.className = 'ms-all-row';
   var allCb = document.createElement('input');
@@ -1227,6 +1404,7 @@ function createMultiSelect(containerId, values, onChange, labelMap) {
   // description while the checkbox's own value - what filtering matches
   // against - stays the raw underlying value.
   var checkboxes = [];
+  var optionRows = [];
   values.forEach(function (v) {
     var row = document.createElement('label');
     var cb = document.createElement('input');
@@ -1237,6 +1415,11 @@ function createMultiSelect(containerId, values, onChange, labelMap) {
     row.appendChild(document.createTextNode(' ' + (labelMap && labelMap[v] ? labelMap[v] : v)));
     panel.appendChild(row);
     checkboxes.push(cb);
+    optionRows.push({ row: row, searchText: String(displayLabel(v)).toLowerCase() });
+  });
+  searchBox.addEventListener('input', function () {
+    var q = searchBox.value.toLowerCase();
+    optionRows.forEach(function (o) { o.row.style.display = o.searchText.indexOf(q) === -1 ? 'none' : ''; });
   });
 
   function displayLabel(v) { return (labelMap && labelMap[v]) ? labelMap[v] : v; }
@@ -1282,7 +1465,13 @@ function createMultiSelect(containerId, values, onChange, labelMap) {
   toggle.addEventListener('click', function (e) {
     e.stopPropagation();
     document.querySelectorAll('.ms-panel').forEach(function (p) { if (p !== panel) p.style.display = 'none'; });
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+    var opening = panel.style.display === 'none';
+    panel.style.display = opening ? 'block' : 'none';
+    if (opening) {
+      searchBox.value = '';
+      optionRows.forEach(function (o) { o.row.style.display = ''; });
+      searchBox.focus();
+    }
   });
 
   updateToggleText();
@@ -1293,6 +1482,8 @@ function createMultiSelect(containerId, values, onChange, labelMap) {
       selected = new Set();
       allCb.checked = true;
       checkboxes.forEach(function (cb) { cb.checked = true; });
+      searchBox.value = '';
+      optionRows.forEach(function (o) { o.row.style.display = ''; });
       updateToggleText();
     }
   };
@@ -1810,7 +2001,7 @@ console.log('Dashboard built (' + (dashboardHtml.length / 1024 / 1024).toFixed(2
 // Data sheet (unchanged from previous build, full detail table)
 // =========================================================================
 const dataSheetHtml = buildDataTablesHtml(H, dataSheet.rows, 'Data', undefined, undefined,
-  ['Std Vendor Name', 'DB', 'Std Comm', 'yyyy-mm', 'ignore / consider', 'ProdFamiDesc', 'Part_MfgCat_Code']);
+  ['Std Vendor Name', 'DB', 'Std Comm', 'yyyy-mm', 'ignore / consider', 'ProdFamiDesc', 'ProdFamiCode', 'Part_MfgCat_Code']);
 console.log('Data sheet built (' + (dataSheetHtml.length / 1024 / 1024).toFixed(2) + ' MB)');
 
 // =========================================================================
@@ -1884,7 +2075,7 @@ const combinedHtml = `<!doctype html>
     <ul>
       <li><b>🔗 Click to drill down / 點擊即可篩選</b> — click a category (GLID/Fittings/Packaging/Coating) or a table cell (Item Code/DB/Vendor) to jump straight to the Data tab, pre-filtered.<br>點擊分類或表格中的料號/DB/供應商，會直接跳到 Data 頁面並自動套用篩選。</li>
       <li><b>↔️ Resizable columns / 欄寬可自由調整</b> — drag a column header's right edge on the GLID/Fittings/Packaging/Coating tables; your widths are remembered.<br>在 GLID/Fittings/Packaging/Coating 表格拖曳欄位邊界即可調整寬度，設定會自動記住。</li>
-      <li><b>🏷️ Product Family / 產品家族</b> — new ProdFamiDesc filter (Dashboard, GLID, Fittings) plus SKU vs Part family breakdown pie charts on the Dashboard.<br>新增 ProdFamiDesc 家族篩選（Dashboard、GLID、Fittings），Dashboard 也新增 SKU 與 Part 家族分布圓餅圖。</li>
+      <li><b>🏷️ Product Family / 產品家族</b> — new ProdFamiDesc and ProdFamiCode filters (Dashboard/Data have ProdFamiDesc; GLID, Fittings and Data have both) plus SKU vs Part family breakdown pie charts on the Dashboard.<br>新增 ProdFamiDesc 與 ProdFamiCode 家族篩選（Dashboard/Data 有 ProdFamiDesc；GLID、Fittings、Data 兩個都有），Dashboard 也新增 SKU 與 Part 家族分布圓餅圖。</li>
       <li><b>Live filters / 即時篩選</b> — Month, Entity, Std Comm, Vendor, Item Code, Ignore/Consider — charts and tables update together instantly.<br>可依月份、實體、類別、供應商、料號、Ignore/Consider 篩選，圖表與明細表同步更新。</li>
       <li><b>Sortable tables + CSV export / 明細表排序與匯出</b> — click a column header to sort; "Export CSV" downloads exactly what's currently filtered.<br>點欄位標題可排序；「Export CSV」只會匯出目前篩選畫面的內容。</li>
       <li><b>🌙 Light/Dark mode</b> — toggle top-right.<br>右上角可切換淺色/深色模式。</li>
@@ -1960,15 +2151,15 @@ showSheet(0);
 var introOverlay = document.getElementById('introOverlay');
 var introDontShow = document.getElementById('introDontShow');
 var introCloseBtn = document.getElementById('introClose');
-// Bumped to _v2 so viewers who already dismissed the old intro see this
-// updated one once (drill-down/resize/Product Family are new enough to be
-// worth resurfacing), rather than staying permanently hidden by an old dismissal.
+// Bumped to _v3 so viewers who already dismissed an older intro see this
+// updated one once (ProdFamiCode is new enough to be worth resurfacing),
+// rather than staying permanently hidden by an old dismissal.
 var introDismissed = false;
-try { introDismissed = localStorage.getItem('reportIntroDismissed_v2') === '1'; } catch (e) {}
+try { introDismissed = localStorage.getItem('reportIntroDismissed_v3') === '1'; } catch (e) {}
 if (!introDismissed) introOverlay.classList.remove('hidden');
 introCloseBtn.onclick = function () {
   if (introDontShow.checked) {
-    try { localStorage.setItem('reportIntroDismissed_v2', '1'); } catch (e) {}
+    try { localStorage.setItem('reportIntroDismissed_v3', '1'); } catch (e) {}
   }
   introOverlay.classList.add('hidden');
 };

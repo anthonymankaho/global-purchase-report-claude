@@ -1,31 +1,42 @@
 <#
 .SYNOPSIS
-  Copies the ProdFamiDesc (column 37) values from OUTSIDETEMP.xlsx's Data sheet
-  into the official monthly source report, matching rows by POSITION only after
-  verifying every row's key columns (PO_NO, ITEM_CODE, VEND_INV_NO, REC_QTY)
-  actually line up between the two files - abort-before-write if not.
+  Copies one named column's values (default ProdFamiDesc) from an OUTSIDETEMP-style
+  workbook's Data sheet into the official monthly source report, matching rows by
+  POSITION only after verifying every row's key columns (PO_NO, ITEM_CODE,
+  VEND_INV_NO, REC_QTY) actually line up between the two files - abort-before-write
+  if not.
 
 .DESCRIPTION
-  OUTSIDETEMP.xlsx was originally synced FROM the official source report by
-  Publish-OutsideReport.ps1 (straight row-by-row copy, same order), so its rows
-  should still align 1:1 with the source report's rows. This script re-verifies
-  that assumption row-by-row (not just spot-checked) before writing anything,
-  since silently misaligning ProdFamiDesc data against the wrong transaction
-  would be worse than not adding the column at all.
+  OUTSIDETEMP.xlsx/OUTSIDETEMP_VBA_PRACTICE.xlsm are originally synced FROM the
+  official source report by Publish-OutsideReport.ps1 (straight row-by-row copy,
+  same order), so their rows should still align 1:1 with the source report's rows.
+  This script re-verifies that assumption row-by-row (not just spot-checked) before
+  writing anything, since silently misaligning a column's data against the wrong
+  transaction would be worse than not adding the column at all.
 
-  Values only (not the VLOOKUP formula) are copied - the source report doesn't
-  need to know how ProdFamiDesc was computed, just the resulting value.
+  Values only (not any formula) are copied - the source report doesn't need to know
+  how the column was computed, just the resulting value.
 
 .PARAMETER SourceReportPath
-  The official monthly report to add/update ProdFamiDesc in (modified in place -
+  The official monthly report to add/update the column in (modified in place -
   overwrites this file, per explicit user confirmation).
 
 .PARAMETER OutsideTempPath
-  Path to OUTSIDETEMP.xlsx (already has the corrected ProdFamiDesc column).
+  Path to the workbook that already has the column filled in (OUTSIDETEMP.xlsx or
+  OUTSIDETEMP_VBA_PRACTICE.xlsm, whichever one the column was actually added to).
+
+.PARAMETER ColumnName
+  The Data-sheet header text of the column to copy, e.g. "ProdFamiDesc" (default)
+  or "ProdFamiCode".
+
+.EXAMPLE
+  .\Copy-ProdFamiDescToSource.ps1
+  .\Copy-ProdFamiDescToSource.ps1 -ColumnName "ProdFamiCode" -OutsideTempPath "...\OUTSIDETEMP_VBA_PRACTICE.xlsm"
 #>
 param(
   [string]$SourceReportPath = "C:\Users\User\Desktop\Global Purchase Report Claude\Global Purchase Report RPA\REPORT\FIN_MHK+STC+MZQ+MIL+RACO_PUR_REPORT-(1-7)2026_20260826_RV0.xlsx",
-  [string]$OutsideTempPath = "C:\Users\User\Desktop\Global Purchase Report Claude\Global Purchase Report RPA\REPORT\FIN_MHK+STC+MZQ+MIL+RACO_PUR_REPORT-OUTSIDETEMP.xlsx"
+  [string]$OutsideTempPath = "C:\Users\User\Desktop\Global Purchase Report Claude\Global Purchase Report RPA\REPORT\FIN_MHK+STC+MZQ+MIL+RACO_PUR_REPORT-OUTSIDETEMP.xlsx",
+  [string]$ColumnName = "ProdFamiDesc"
 )
 
 $ErrorActionPreference = "Stop"
@@ -46,10 +57,10 @@ try {
   $lastColOut = $wsOut.Cells(1, $wsOut.Columns.Count).End(-4159).Column
   $famColOut = 0
   for ($c = 1; $c -le $lastColOut; $c++) {
-    if ($wsOut.Cells(1, $c).Text.Trim() -eq "ProdFamiDesc") { $famColOut = $c; break }
+    if ($wsOut.Cells(1, $c).Text.Trim() -eq $ColumnName) { $famColOut = $c; break }
   }
-  if ($famColOut -eq 0) { throw "ProdFamiDesc column not found in OUTSIDETEMP's Data sheet." }
-  Write-Host "  ProdFamiDesc is column $famColOut in OUTSIDETEMP ($($lastRowOut - 1) data rows)"
+  if ($famColOut -eq 0) { throw "$ColumnName column not found in OUTSIDETEMP's Data sheet." }
+  Write-Host "  $ColumnName is column $famColOut in OUTSIDETEMP ($($lastRowOut - 1) data rows)"
 
   # Key columns for row-alignment verification: PO_NO(1), VEND_INV_NO(6), ITEM_CODE(8), REC_QTY(12)
   $keyColsOut = $wsOut.Range($wsOut.Cells(2, 1), $wsOut.Cells($lastRowOut, 12)).Value2
@@ -105,14 +116,14 @@ try {
 
   $famColSrc = 0
   for ($c = 1; $c -le $lastColSrc; $c++) {
-    if ($wsSrc.Cells(1, $c).Text.Trim() -eq "ProdFamiDesc") { $famColSrc = $c; break }
+    if ($wsSrc.Cells(1, $c).Text.Trim() -eq $ColumnName) { $famColSrc = $c; break }
   }
   if ($famColSrc -eq 0) {
     $famColSrc = $lastColSrc + 1
-    $wsSrc.Cells(1, $famColSrc).Value2 = "ProdFamiDesc"
-    Write-Host "  Added new column $famColSrc 'ProdFamiDesc' to source report."
+    $wsSrc.Cells(1, $famColSrc).Value2 = $ColumnName
+    Write-Host "  Added new column $famColSrc '$ColumnName' to source report."
   } else {
-    Write-Host "  ProdFamiDesc already exists at column $famColSrc in source report - overwriting its values."
+    Write-Host "  $ColumnName already exists at column $famColSrc in source report - overwriting its values."
   }
 
   $wsSrc.Range($wsSrc.Cells(2, $famColSrc), $wsSrc.Cells($lastRowSrc, $famColSrc)).Value2 = $famValsOut

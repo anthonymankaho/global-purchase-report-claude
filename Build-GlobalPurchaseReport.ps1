@@ -27,24 +27,22 @@
                   the same position and cancel out) -> appended into Report with DB constant "MAZ".
 
     After all entities are appended: the Exchange Rate sheet is updated first (see
-    Update-ExchangeRateSheet), then Report's own Q:S (exchange rate / USD price) and U:AJ (vendor/part/
-    commodity standardization, min-max price comparison, cross-checks) formulas are filled for the new
-    rows only, ONE COLUMN AT A TIME with an immediate freeze-to-values after each column (see
-    Set-FormulaColumnsFrozen) - filling and calculating all formula columns together would recalculate
-    the full dependency web across every new row at once, which is what caused Excel to hang for 10+
-    minutes earlier in this project. Historical rows from prior months stay frozen to static values and
-    are never re-touched. X (period index) is deliberately left out of this entirely - it's kept as a
-    permanently-live formula pre-filled far ahead (X2:X70000) in the Temp reference file, since it's cheap
-    (no full-column scan) and Q depends on it. AA/AB (Max/Min PO Price) are also handled outside this
-    function - see Set-MaxMinPriceColumns, which computes them in PowerShell (group by item code + B/O
-    type, done once in memory) instead of their original MAXIFS/MINIFS full-column-scan formulas, which
-    get more expensive every month as the report grows.
+    Update-ExchangeRateSheet), then Report's Q:S (exchange rate / USD price) and the AA/AB-independent
+    part of U:AJ formulas (U,V,W,Q,R,S,Y,Z,AJ) are filled for the new rows only, ONE COLUMN AT A TIME
+    with an immediate freeze-to-values after each column (see Set-FormulaColumnsFrozen) - filling and
+    calculating all formula columns together would recalculate the full dependency web across every new
+    row at once, which is what caused Excel to hang for 10+ minutes earlier in this project. Historical
+    rows from prior months stay frozen to static values and are never re-touched. X (period index) is
+    deliberately left out of this entirely - it's kept as a permanently-live formula pre-filled far ahead
+    (X2:X70000) in the Temp reference file, since it's cheap (no full-column scan) and Q depends on it.
 
-    After U (Std Vendor Name) is filled, the new rows are scanned for "NEW VENDOR" (U's IFERROR
-    fallback when the vendor+entity combination isn't in the 'Std Vendor Name' lookup table) - any such
-    rows are copied in full into a "New Vendors" sheet in the same workbook for review (see
-    Copy-NewVendorRowsToReviewSheet). That sheet is cleared and repopulated each run, so it always
-    reflects just the current month's new-vendor findings, not an ever-growing history.
+    AA/AB (Max/Min PO Price) are deliberately NOT filled by this script (per explicit instruction,
+    2026-08): the report owner copies AA2:AB2's live formula down to the new rows manually in Excel and
+    confirms it's done before continuing. This script stops after the first-pass columns above and prints
+    the exact next steps. Once AA/AB are filled manually, run Complete-FormulaColumns.ps1 to fill the
+    remaining AA/AB-dependent columns (AC/AD/AE/AG/AH, plus AF/AI which are grouped with them) and the
+    New Vendors review sheet - see that script's header for why it's a separate step and how it finds the
+    row range without relying on any formula column being filled yet.
 
     Email send and MMS upload are NOT part of this script (stay manual, same as the MTC project).
 
@@ -617,30 +615,25 @@ function Update-ExchangeRateSheet($excel, [string]$ratePath, $reportWs, [string]
 # static values before moving to the next column.
 #
 # Why one column at a time, not all at once: filling every formula column together and calculating once
-# would recalculate the full 19-column dependency web (including the full-column MAXIFS/MINIFS scans in
-# AA/AB) across every new row simultaneously - this is exactly what caused Excel to hang for 10+ minutes
-# earlier in this project. Freezing each column to values immediately after it calculates keeps every
-# individual recalculation small, and later columns read already-resolved plain values instead of live
-# formulas from earlier columns - functionally identical, far cheaper to compute.
+# would recalculate the full dependency web across every new row simultaneously - this is exactly what
+# caused Excel to hang for 10+ minutes earlier in this project. Freezing each column to values immediately
+# after it calculates keeps every individual recalculation small, and later columns read already-resolved
+# plain values instead of live formulas from earlier columns - functionally identical, far cheaper to
+# compute.
 #
 # Order is dependency order, not left-to-right spreadsheet order, found by reading every formula in
 # row 2 (e.g. Q references X, which sits to Q's right - naive left-to-right would fill Q before X
-# exists). AA/AB are deliberately NOT in this list - see Set-MaxMinPriceColumns, which replaces their
-# MAXIFS/MINIFS full-column-scan formulas with a PowerShell-computed value (same result, far cheaper -
-# a full-column scan re-run for every new row gets more expensive every month as the report grows).
+# exists). This function only ever gets called with the AA/AB-independent columns from Main (U,V,W,Q,
+# R,S,Y,Z,AJ) - AA/AB are filled manually (see note in Main), and the AA/AB-dependent columns
+# (AC/AD/AE/AF/AG/AH/AI) are filled by the separate Complete-FormulaColumns.ps1 script, run after the
+# manual AA/AB step. Dependency notes for the columns THIS script's Main actually passes in:
 #   U,V,W    <- raw columns only, no formula dependencies, can go first in any order
 #              (X is deliberately excluded from this whole function - see note in Main)
 #   Q        <- needs X (kept permanently live in the sheet, not filled by this function)
 #   R, S     <- need Q
 #   Y        <- needs U (and raw L,T)
 #   Z, AJ    <- need W
-#   AC       <- needs Y and R (also needs AA - filled separately, see Set-MaxMinPriceColumns)
-#   AF       <- needs Y and U
-#   AD       <- needs Y and AA (from Set-MaxMinPriceColumns)
-#   AE       <- needs Y and AB (from Set-MaxMinPriceColumns)
-#   AG       <- needs Y, AD, AC, AF
-#   AH       <- needs Y, AE, AC, AF
-#   AI       <- raw H only, independent, can go anywhere
+# (AC/AF/AD/AE/AG/AH/AI's dependency notes live in Complete-FormulaColumns.ps1, where they're now filled)
 function Set-FormulaColumnsFrozen($ws, [int]$startRow, [int]$endRow, [string[]]$columns) {
     if ($endRow -lt $startRow) { return }
     $xlPasteFormulas = -4123
@@ -660,93 +653,12 @@ function Set-FormulaColumnsFrozen($ws, [int]$startRow, [int]$endRow, [string[]]$
     $ws.Application.CutCopyMode = $false
 }
 
-# Replaces AA (Max_PO_Price(USD)) and AB (Min_PO_Price(USD))'s MAXIFS/MINIFS formulas with a PowerShell-
-# computed value for the new rows [startRow:endRow]. Same result, far cheaper: MAXIFS/MINIFS re-scan the
-# entire R and H columns from scratch for every single row that needs them, and that scan gets more
-# expensive every month as the report grows - this instead does ONE bulk read of the whole sheet's H/K/R/Y
-# columns, groups by (item code, B/O type) in memory, computes each group's max/min once, and writes
-# plain values for just the new rows. No formula, so nothing here can trigger a recalculation cascade.
-function Set-MaxMinPriceColumns($ws, [int]$startRow, [int]$endRow) {
-    if ($endRow -lt $startRow) { return }
-    $trueLastRow = Get-TrueLastDataRow $ws 1
-    $full = Get-RangeArray $ws 2 8 $trueLastRow 25   # H=8 .. Y=25 -> 0-based array cols 0..17
-
-    $groups = @{}   # "ItemCode|BO" -> List[double] of R values where Y="Consider"
-    $n = $full.GetLength(0)
-    for ($i = 0; $i -lt $n; $i++) {
-        if ([string]$full[$i, 17] -ne "Consider") { continue }   # Y (col 25, array idx 17)
-        $r = $full[$i, 10]                                       # R (col 18, array idx 10)
-        if ($r -isnot [double]) { continue }
-        $key = "$([string]$full[$i, 0])|$([string]$full[$i, 3])"  # H (idx0) | K (idx3)
-        if (-not $groups.ContainsKey($key)) { $groups[$key] = New-Object System.Collections.Generic.List[double] }
-        $groups[$key].Add($r)
-    }
-
-    $maxMin = @{}
-    foreach ($key in $groups.Keys) {
-        $vals = $groups[$key]
-        $maxMin[$key] = @(($vals | Measure-Object -Maximum).Maximum, ($vals | Measure-Object -Minimum).Minimum)
-    }
-
-    $rowCount = $endRow - $startRow + 1
-    $result = New-Object 'object[,]' $rowCount, 2
-    for ($r = $startRow; $r -le $endRow; $r++) {
-        $idx = $r - $startRow
-        $y = $ws.Cells.Item($r, 25).Text
-        if ($y -eq "Ignore") { $result[$idx, 0] = ""; $result[$idx, 1] = ""; continue }
-        $key = "$($ws.Cells.Item($r, 8).Value2)|$($ws.Cells.Item($r, 11).Value2)"
-        if ($maxMin.ContainsKey($key)) {
-            $result[$idx, 0] = $maxMin[$key][0]
-            $result[$idx, 1] = $maxMin[$key][1]
-        } else {
-            $result[$idx, 0] = ""; $result[$idx, 1] = ""
-        }
-    }
-    Set-RangeArray $ws $startRow 27 $result   # AA = column 27
-    Write-Host "  [AA/AB] computed in PowerShell (grouped by item code + B/O type), written as values"
-}
-
-# Scans the newly appended rows [startRow:endRow] in the Data sheet for column U ("Std Vendor Name") =
-# "NEW VENDOR" (the IFERROR fallback when CONCATENATE(T,D) isn't found in the 'Std Vendor Name' lookup
-# table - i.e. a vendor+entity combination that hasn't been standardized yet). Copies any such rows in
-# full to a "New Vendors" sheet in the same workbook (created if missing, cleared and repopulated if it
-# already exists) so they're easy to review each month, rather than needing to filter/search the full
-# 36,000+ row Data sheet by hand.
-function Copy-NewVendorRowsToReviewSheet($wb, $dataWs, [int]$startRow, [int]$endRow) {
-    if ($endRow -lt $startRow) { return }
-    $lastCol = $dataWs.Cells.Item(1, $dataWs.Columns.Count).End(-4159).Column   # true last used column
-    $block = Get-RangeArray $dataWs $startRow 1 $endRow $lastCol
-    $n = $block.GetLength(0)
-    $matchRows = New-Object System.Collections.Generic.List[int]
-    for ($i = 0; $i -lt $n; $i++) {
-        if ([string]$block[$i, 20] -eq "NEW VENDOR") { [void]$matchRows.Add($i) }   # U = column 21, array idx 20
-    }
-
-    if ($matchRows.Count -eq 0) {
-        Write-Host "[NewVendorCheck] No 'NEW VENDOR' rows found in rows $startRow-$endRow."
-        return
-    }
-
-    $sheetName = "New Vendors"
-    $reviewWs = $null
-    foreach ($s in $wb.Sheets) { if ($s.Name -eq $sheetName) { $reviewWs = $s } }
-    if ($reviewWs) {
-        $reviewWs.Cells.Clear() | Out-Null
-    } else {
-        $reviewWs = $wb.Sheets.Add()
-        $reviewWs.Name = $sheetName
-    }
-
-    $header = Get-RangeArray $dataWs 1 1 1 $lastCol
-    Set-RangeArray $reviewWs 1 1 $header
-
-    $result = New-Object 'object[,]' $matchRows.Count, $lastCol
-    for ($i = 0; $i -lt $matchRows.Count; $i++) {
-        for ($c = 0; $c -lt $lastCol; $c++) { $result[$i, $c] = $block[$matchRows[$i], $c] }
-    }
-    Set-RangeArray $reviewWs 2 1 $result
-    Write-Host "[NewVendorCheck] Found $($matchRows.Count) 'NEW VENDOR' row(s) in rows $startRow-$endRow - copied to '$sheetName' sheet for review." -ForegroundColor Yellow
-}
+# NOTE: AA/AB filling (formerly Set-MaxMinPriceColumns, a PowerShell-computed replacement for their
+# MAXIFS/MINIFS formulas) and the "New Vendors" review-sheet scan (formerly Copy-NewVendorRowsToReviewSheet)
+# both moved to Complete-FormulaColumns.ps1 (2026-08) - AA/AB are now filled manually by the report owner
+# copying AA2:AB2's live formula down, and everything that depends on AA/AB (including the New Vendors
+# scan's natural place in the column-fill order) runs afterward in that separate script. See its header
+# for the full rationale.
 
 # --- Main ---
 
@@ -827,15 +739,14 @@ try {
             Update-ExchangeRateSheet $excel $ExchangeRatePath $erWs $ReportMonth
         }
 
-        # Fill Report's shared Q:S/U:AJ formulas for the newly appended rows only, one column at a time
-        # with an immediate freeze-to-values after each (see Set-FormulaColumnsFrozen for why). Historical
-        # rows stay frozen from earlier months - this never re-touches them.
+        # Fill Report's Q:S and the AA/AB-independent part of U:AJ formulas for the newly appended rows
+        # only, one column at a time with an immediate freeze-to-values after each (see
+        # Set-FormulaColumnsFrozen for why). Historical rows stay frozen from earlier months - this never
+        # re-touches them. AA/AB and everything depending on them (AC/AD/AE/AF/AG/AH/AI, New Vendors scan)
+        # are deliberately NOT done here - see the header note and the message printed below.
         if ($lastNewRow -ge $startRow) {
-            Write-Host "Filling Q:S/U:AJ formulas for rows $startRow to $lastNewRow (one column at a time)..."
+            Write-Host "Filling Q:S/U:AJ (AA/AB-independent columns) for rows $startRow to $lastNewRow (one column at a time)..."
             Set-FormulaColumnsFrozen $data $startRow $lastNewRow @("U", "V", "W", "Q", "R", "S", "Y", "Z", "AJ")
-            Copy-NewVendorRowsToReviewSheet $reportWb $data $startRow $lastNewRow
-            Set-MaxMinPriceColumns $data $startRow $lastNewRow
-            Set-FormulaColumnsFrozen $data $startRow $lastNewRow @("AC", "AF", "AD", "AE", "AG", "AH", "AI")
         }
 
         $reportWb.Save()
@@ -852,4 +763,7 @@ finally {
 }
 
 Write-Host ""
-Write-Host "=== Done. Please open the report, run Data > Refresh All, and spot-check before sending. ===" -ForegroundColor Cyan
+Write-Host "=== Done with the automated part. Manual step needed next: ===" -ForegroundColor Cyan
+Write-Host "  1. Open the report in Excel, copy AA2:AB2 down to rows $startRow-$lastNewRow, and calculate." -ForegroundColor Cyan
+Write-Host "  2. Once confirmed correct, run: .\Complete-FormulaColumns.ps1 -ReportMonth `"$ReportMonth`"" -ForegroundColor Cyan
+Write-Host "     (fills AC/AD/AE/AF/AG/AH/AI, freezes them, and builds the New Vendors review sheet)" -ForegroundColor Cyan

@@ -18,6 +18,20 @@ Scope of this rebuild: **only the merge/report-generation logic**. ERP login/exp
 
 ---
 
+## 月初資料索取 / Requesting monthly data from inter-group entities
+
+在動手跑主流程之前，MZQ/MIL/RACO/TVS/MAZ 五個實體的當月採購資料通常需要先開口跟對方要。這支腳本會分別用五種語言（簡體中文/英文/義大利文/西班牙文）建立 5 封獨立的 Gmail 草稿，收件人、稱呼、語言各自對應該實體聯絡人，主旨/內文範本一致但已翻譯成自然道地的商務用語（非逐字翻譯）：
+Before running the main pipeline, the monthly purchase data from the five entities MZQ/MIL/RACO/TVS/MAZ usually needs to be requested first. This script creates 5 separate Gmail drafts, one per entity, each in that contact's language (Simplified Chinese/English/Italian/Spanish), with the same subject/body template translated into natural business phrasing (not literal word-for-word):
+
+```powershell
+.\New-InterGroupPurchaseDataRequestDrafts.ps1 -ReportMonth "2026-09"
+```
+
+`-ReportMonth` 是「執行當下的月份」，不是要索取的月份——腳本會自動往前推一個月（例如 9 月執行會要求 8 月的資料，因為那是剛結束的月份）。加 `-Only MZQ` 可只建立單一草稿方便測試。Cc 名單（Fiona Yip、Alex Wong、Steven Cheng）固定套用到全部 5 封，可用 `-Cc` 覆寫。只會呼叫 Gmail 的 `drafts.create`，絕不自動寄出。
+`-ReportMonth` is the month you're *running this in*, not the month being requested — the script automatically requests the prior month's data (e.g. running it in September asks for August, since that's the month that just closed). Add `-Only MZQ` to create just one draft for testing. The Cc list (Fiona Yip, Alex Wong, Steven Cheng) applies to all 5 by default, override with `-Cc`. Only ever calls Gmail's `drafts.create`, never auto-sends.
+
+---
+
 ## 怎麼用 / How to use it
 
 ```powershell
@@ -88,6 +102,7 @@ Global Purchase Report Claude/
 ├── New-ReportAuditSummary.ps1                          ← 稽核摘要（唯讀，最後列號 + 七實體列數 + 總列數）
 ├── Get-PenExchangeRate.ps1                             ← 補 MAZ 的 PEN 匯率缺口（抓 USD/PEN，換算寫入 Exchange Rate 分頁 M欄）
 ├── Publish-OutsideReport.ps1                           ← 外部交付檔案：複製數值進 OUTSIDETEMP.xlsx + OUTSIDETEMP_VBA_PRACTICE.xlsm、延伸表格、重新整理樞紐分析表、另存當月交付檔
+├── New-InterGroupPurchaseDataRequestDrafts.ps1         ← 月初向 MZQ/MIL/RACO/TVS/MAZ 索取當月採購資料（5 封多語言 Gmail 草稿，只建草稿不寄出）
 ├── New-MonthlyEmailDraft.ps1                           ← Gmail 草稿通知（比照舊RPA格式與收件人清單，只建草稿不寄出）
 ├── New-MonthlySlackPost.ps1                            ← Slack 頻道貼文（含互動式HTML報表附件，即時發布無草稿機制）
 ├── Save-SlackToken.ps1                                 ← 一次性設定：加密儲存 Slack Bot Token
@@ -131,9 +146,10 @@ Global Purchase Report Claude/
 | 2026-07 月結 | ✅ 7個實體皆已用實際日期欄位驗證（非僅檔案時間戳記），主報表與交付檔均已產出 |
 | 每月通知/發布自動化 | ✅ 已完成（`New-MonthlyEmailDraft.ps1` Gmail草稿 + `New-MonthlySlackPost.ps1` Slack頻道貼文含HTML報表附件，2026-08-27 實測成功，見 SOP 第9節）|
 | Data 新增第 37 欄 ProdFamiDesc（產品家族） | ✅ 2026-09-02：來源 Excel 新增 `ProdFamiDesc` 欄（VLOOKUP 自 MMS DATA），HTML 報表全流程（`Generate-PurchaseReportHtml.ps1`／`build_report.js`）本來就是動態抓欄位、不寫死欄數，實測 37 欄可直接處理無需改程式；新增 `Copy-ProdFamiDescToSource.ps1` 一次性工具，把 OUTSIDETEMP.xlsx 算好的 ProdFamiDesc 值核對列對齊後複製回正式月報來源檔。⚠️ 此欄位目前不含 **TVS 與 MAZ** 兩個實體的資料（來源自動化範圍尚未涵蓋，另行申請中）|
-| HTML 報表新增功能（2026-08-28～09-02） | ✅ Dashboard/GLID/Fittings/Data 新增 ProdFamiDesc 與 Part_MfgCat_Code 篩選；Dashboard 新增 SKU vs Part 家族分布圓餅圖（Top10+Other）；GLID/Fittings/Packaging/Coating 四頁明細表欄位可拖曳調整寬度（設定存在瀏覽器本機）；Dashboard/GLID/Fittings/Packaging/Coating 的 ITEM_CODE/DB/Vendor 儲存格與 Dashboard 分類/供應商列都可點擊，直接跳到 Data 頁並套用篩選；KPI 卡片拆成 SKU/Part 兩區並各自顯示加權百分比；歡迎彈窗（intro modal）內容已更新並改用新版 localStorage 鍵值，舊使用者也會再看到一次 |
+| HTML 報表新增功能（2026-08-28～09-02；2026-09-09 更新） | ✅ Dashboard/GLID/Fittings/Data 新增 ProdFamiDesc 與 Part_MfgCat_Code 篩選；Dashboard 新增 SKU vs Part 家族分布圓餅圖（Top10+Other）；GLID/Fittings/Packaging/Coating 四頁明細表欄位可拖曳調整寬度（設定存在瀏覽器本機），且 2026-09-09 起預設欄寬會依使用者目前電腦/瀏覽器視窗可用寬度自動縮放，盡量讓四頁表格在同一畫面內看到全部欄位；Dashboard/GLID/Fittings/Packaging/Coating 的 ITEM_CODE/DB/Vendor 儲存格與 Dashboard 分類/供應商列都可點擊，直接跳到 Data 頁並套用篩選；KPI 卡片拆成 SKU/Part 兩區並各自顯示加權百分比；歡迎彈窗（intro modal）內容已更新並改用新版 localStorage 鍵值，舊使用者也會再看到一次 |
 | 第2列母版公式效能優化（2026-08） | ✅ 已完成，U/V/W/AA/AB/AG/AH 改有界範圍；修正 ITEM_CODE 前導零不一致造成的 AG/AH #N/A（用 `LET()` 正規化）；完整公式表見 SOP 第3.1節 |
 | AA/AB 改為全程人工處理（2026-08-04）| ✅ 已完成：`Build-GlobalPurchaseReport.ps1` 不再碰 AA/AB 及依賴欄位；新增 `Complete-FormulaColumns.ps1`，人工填好 AA/AB 後執行，自動檢查沒填會報錯中止，避免重演 key 不同步 #N/A 問題 |
+| 月初資料索取自動化（2026-09-08） | ✅ 已完成：`New-InterGroupPurchaseDataRequestDrafts.ps1`，向 MZQ/MIL/RACO/TVS/MAZ 建立 5 封多語言 Gmail 草稿索取當月採購資料，`-ReportMonth` 自動往前推一個月 |
 
 ---
 
@@ -165,8 +181,8 @@ With no parameters it defaults to a fixed working file, `FIN_Global_Purchase -Re
 **（實驗性）Excel 按鈕觸發**：`HTML_Report_Generator\HtmlUpdateModule.bas` 是一份可手動匯入 Excel VBA 的巨集範本，讓使用者能用工作表上的一個按鈕觸發本腳本，已在沙盒環境驗證可行（不影響使用者原本開著的 Excel）。要正式使用需要把承載按鈕的檔案另存成 `.xlsm`，且因每月報表檔名不同、巨集不會自動延續到下個月，加上公司巨集安全政策是否允許仍待確認——尚未正式部署，詳見 SOP 第 8 節。
 **(Experimental) Excel-button trigger**: `HTML_Report_Generator\HtmlUpdateModule.bas` is a manually-importable VBA macro that lets a worksheet button trigger this script — sandbox-verified as safe (doesn't conflict with the user's own open Excel session). Real use requires saving the host file as `.xlsm`, manually re-importing the macro each month (filenames change), and confirming your organization's macro-security policy allows it — not yet deployed for real use. See SOP §8 for details.
 
-**2026-08-28～09-02 新增功能**：點擊分類（Dashboard）或表格儲存格（ITEM_CODE/DB/Vendor）直接跳到 Data 頁並套用篩選；GLID/Fittings/Packaging/Coating 明細表欄寬可拖曳調整（設定存在瀏覽器 localStorage）；新增 `ProdFamiDesc`（產品家族）與 `Part_MfgCat_Code` 篩選器；Dashboard 新增 SKU vs Part 家族分布圓餅圖（Top10+Other）與拆分成 SKU/Part 兩區、各自帶加權百分比的 KPI 卡片；歡迎彈窗內容已更新（新版 localStorage 鍵值，已關閉舊版提示的使用者也會再看到一次）。⚠️ **ProdFamiDesc 目前不含 TVS 與 MAZ 的資料**（來源自動化尚未涵蓋這兩個實體）。
-**New in 2026-08-28～09-02**: click a Dashboard category or a table cell (ITEM_CODE/DB/Vendor) to jump straight to the Data tab, pre-filtered; GLID/Fittings/Packaging/Coating tables now have drag-to-resize columns (persisted in browser localStorage); new `ProdFamiDesc` (Product Family) and `Part_MfgCat_Code` filters; Dashboard gained SKU vs Part family breakdown pie charts (Top 10 + Other) and KPI cards split into SKU/Part sections each with a weighted %. Welcome popup content refreshed (new localStorage key, so viewers who dismissed the old one see it once more). ⚠️ **ProdFamiDesc currently excludes TVS and MAZ** (the source automation doesn't cover those two entities yet).
+**2026-08-28～09-02 新增功能；2026-09-09 更新**：點擊分類（Dashboard）或表格儲存格（ITEM_CODE/DB/Vendor）直接跳到 Data 頁並套用篩選；GLID/Fittings/Packaging/Coating 明細表欄寬可拖曳調整（設定存在瀏覽器 localStorage），預設欄寬會依使用者目前電腦/瀏覽器視窗可用寬度自動縮放，盡量讓四頁表格在同一畫面內看到全部欄位；若使用者手動拖曳欄寬，手動設定會保留，按「Reset column widths」會回到目前視窗大小的自動適配欄寬；新增 `ProdFamiDesc`（產品家族）與 `Part_MfgCat_Code` 篩選器；Dashboard 新增 SKU vs Part 家族分布圓餅圖（Top10+Other）與拆分成 SKU/Part 兩區、各自帶加權百分比的 KPI 卡片；歡迎彈窗內容已更新（新版 localStorage 鍵值，已關閉舊版提示的使用者也會再看到一次）。⚠️ **ProdFamiDesc 目前不含 TVS 與 MAZ 的資料**（來源自動化尚未涵蓋這兩個實體）。
+**New in 2026-08-28～09-02; updated 2026-09-09**: click a Dashboard category or a table cell (ITEM_CODE/DB/Vendor) to jump straight to the Data tab, pre-filtered; GLID/Fittings/Packaging/Coating tables have drag-to-resize columns (persisted in browser localStorage), and their default widths now auto-scale to the user's current computer/browser width so the four tables try to show all columns on one screen; if a user manually drags widths, those manual widths are preserved, while "Reset column widths" returns to the auto-fit widths for the current window size; new `ProdFamiDesc` (Product Family) and `Part_MfgCat_Code` filters; Dashboard gained SKU vs Part family breakdown pie charts (Top 10 + Other) and KPI cards split into SKU/Part sections each with a weighted %. Welcome popup content refreshed (new localStorage key, so viewers who dismissed the old one see it once more). ⚠️ **ProdFamiDesc currently excludes TVS and MAZ** (the source automation doesn't cover those two entities yet).
 
 **一次性資料修補工具**：`Copy-ProdFamiDescToSource.ps1` 把 `OUTSIDETEMP.xlsx` 裡已經算好的 ProdFamiDesc 數值（不是公式），逐列核對 PO_NO/VEND_INV_NO/ITEM_CODE/REC_QTY 對齊無誤後，複製進正式月報來源檔案的新增第 37 欄——核對不通過會直接中止、不寫入任何資料。
 **One-off data-patch tool**: `Copy-ProdFamiDescToSource.ps1` copies the already-computed ProdFamiDesc values (not the formula) from `OUTSIDETEMP.xlsx` into a new 37th column on the official monthly source file, only after verifying every row aligns by PO_NO/VEND_INV_NO/ITEM_CODE/REC_QTY — aborts before writing anything if any row doesn't match.
