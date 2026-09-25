@@ -10,9 +10,7 @@
   word-for-word translation), and the same Cc list on all 5.
 
 .PARAMETER ReportMonth
-  "yyyy-MM", e.g. "2026-09" - the month you're RUNNING this in, not the month being
-  requested. The requested period is always the prior month (e.g. running this with
-  "2026-09" requests August 2026 data, since that's the month that just closed).
+  "yyyy-MM", e.g. "2026-09" - the month of purchase data to request.
 
 .PARAMETER Only
   Company code(s) to limit this run to, e.g. -Only MZQ for a single test draft.
@@ -30,7 +28,7 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [ValidatePattern('^\d{4}-\d{2}$')]
+    [ValidatePattern('^\d{4}-(0[1-9]|1[0-2])$')]
     [string]$ReportMonth,
 
     [ValidateSet('MZQ', 'MIL', 'RACO', 'TVS', 'MAZ')]
@@ -42,11 +40,8 @@ param(
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'GmailOAuth.Common.ps1')
 
-$currentYear = [int]$ReportMonth.Substring(0, 4)
-$currentMonth = [int]$ReportMonth.Substring(5, 2)
-$requestedDate = (Get-Date -Year $currentYear -Month $currentMonth -Day 1).AddMonths(-1)
-$year = $requestedDate.Year
-$month = $requestedDate.Month
+$year = [int]$ReportMonth.Substring(0, 4)
+$month = [int]$ReportMonth.Substring(5, 2)
 
 $monthNamesEn = @('January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December')
 $monthNamesIt = @('gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre')

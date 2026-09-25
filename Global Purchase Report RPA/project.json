@@ -3,6 +3,14 @@
   "projectId": "eef340d2-f360-4c3c-b2cb-300ff5e4df37",
   "description": "从一个空白项目开始设计新的任务自动化",
   "main": "Main.xaml",
+  "entryPoints": [
+    {
+      "filePath": "Main.xaml",
+      "uniqueId": "6f948ae3-b83c-4c29-b8ff-6ae81da184fd",
+      "input": [],
+      "output": []
+    }
+  ],
   "dependencies": {
     "ExcelRangeToImage.Activities": "[1.0.0]",
     "UiPath.ComplexScenarios.Activities": "[1.3.1]",

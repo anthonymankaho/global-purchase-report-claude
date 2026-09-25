@@ -1,4 +1,5 @@
 # Global Purchase Report (PowerShell 重建 / PowerShell Rebuild)
+Powershell Main prompt cd "C:\Users\User\Desktop\Global Purchase Report Claude"
 
 將原本由 UiPath RPA 執行的「Global Purchase Report」月報流程，改為人工資料匯出 + PowerShell 自動合併/產出報表。
 Rebuilding the monthly "Global Purchase Report" from a UiPath RPA process into manual data export + PowerShell-automated merge/report generation.
@@ -27,8 +28,8 @@ Before running the main pipeline, the monthly purchase data from the five entiti
 .\New-InterGroupPurchaseDataRequestDrafts.ps1 -ReportMonth "2026-09"
 ```
 
-`-ReportMonth` 是「執行當下的月份」，不是要索取的月份——腳本會自動往前推一個月（例如 9 月執行會要求 8 月的資料，因為那是剛結束的月份）。加 `-Only MZQ` 可只建立單一草稿方便測試。Cc 名單（Fiona Yip、Alex Wong、Steven Cheng）固定套用到全部 5 封，可用 `-Cc` 覆寫。只會呼叫 Gmail 的 `drafts.create`，絕不自動寄出。
-`-ReportMonth` is the month you're *running this in*, not the month being requested — the script automatically requests the prior month's data (e.g. running it in September asks for August, since that's the month that just closed). Add `-Only MZQ` to create just one draft for testing. The Cc list (Fiona Yip, Alex Wong, Steven Cheng) applies to all 5 by default, override with `-Cc`. Only ever calls Gmail's `drafts.create`, never auto-sends.
+`-ReportMonth` 是要索取的採購資料月份；例如 `2026-09` 會要求 2026 年 9 月的資料。加 `-Only MZQ` 可只建立單一草稿方便測試。Cc 名單（Fiona Yip、Alex Wong、Steven Cheng）固定套用到全部 5 封，可用 `-Cc` 覆寫。只會呼叫 Gmail 的 `drafts.create`，絕不自動寄出。
+`-ReportMonth` is the month of purchase data to request; for example, `2026-09` requests September 2026 data. Add `-Only MZQ` to create just one draft for testing. The Cc list (Fiona Yip, Alex Wong, Steven Cheng) applies to all 5 by default, override with `-Cc`. Only ever calls Gmail's `drafts.create`, never auto-sends.
 
 ---
 

@@ -1,7 +1,0 @@
-{
-  "Version": "1.0",
-  "IncludeWorkflows": [
-    "Main.xaml",
-    "GlobalHandlerX.xaml"
-  ]
-}

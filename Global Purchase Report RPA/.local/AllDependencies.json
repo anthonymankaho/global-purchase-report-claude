@@ -19777,7 +19777,7 @@
             "version": "[1.7.3, 1.7.3]"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\UiPathPlatform\\Studio\\26.0.202-cloud.24997\\PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Users\\User\\AppData\\Local\\UiPath\\Helm\\1.202.1-win32-x64\\PortableRuntimeIdentifierGraph.json"
       }
     },
     "runtimes": {
