@@ -32,6 +32,11 @@
   so column M matches every other currency's convention and Block 2's
   existing PEN=>USD formula (column Z) recomputes correctly on its own.
 
+  If the service cannot be reached, a verified rate can be supplied with
+  -UsdPerPen, -RateDate and -RateSource. The rate date must be within the
+  report month's lookback window; the script validates these inputs before
+  opening or changing the workbook.
+
 .PARAMETER ReportMonth
   The reporting period in "YYYY-MM" format (e.g. "2026-07"). Also the row
   this looks up/writes in the Report's Exchange Rate sheet (column B).
@@ -48,12 +53,27 @@
   How many trailing days to query before giving up looking for a trading day
   with data. Default 7 (covers any combination of weekend + one holiday).
 
+.PARAMETER UsdPerPen
+  Optional offline rate input, in USD per 1 PEN. Use only when the online
+  service is unavailable and the value has been verified from a trusted source.
+
+.PARAMETER RateDate
+  Required with -UsdPerPen. Effective date in YYYY-MM-DD format; it must be
+  within the report month's configured lookback window.
+
+.PARAMETER RateSource
+  Required with -UsdPerPen. Short description or URL identifying the source.
+
 .EXAMPLE
   .\Get-PenExchangeRate.ps1 -ReportMonth "2026-07"
   Fetches USD/PEN as of 2026-07-31 (or the last trading day at/before it),
   converts it to HKD-per-PEN using that row's own USD rate, and writes it
   into column M of the 2026-07 row in
   REPORT\FIN_MHK+STC+MZQ+MIL+RACO+TVS_PUR_REPORT_2026-07.xlsx.
+
+.EXAMPLE
+  .\Get-PenExchangeRate.ps1 -ReportMonth "2026-09" -UsdPerPen 0.2945 -RateDate "2026-09-30" -RateSource "Verified official rate source"
+  Uses a verified USD-per-PEN quote when the online service cannot be reached.
 #>
 param(
   [Parameter(Mandatory = $true)]
@@ -62,10 +82,17 @@ param(
 
   [string]$WorkingFolder = $PSScriptRoot,
   [string]$ReportPath,
-  [int]$LookbackDays = 7
+  [int]$LookbackDays = 7,
+  [double]$UsdPerPen = 0,
+  [string]$RateDate,
+  [string]$RateSource
 )
 
 $ErrorActionPreference = "Stop"
+
+if ($PSBoundParameters.ContainsKey('UsdPerPen') -and $UsdPerPen -le 0) {
+    throw "-UsdPerPen must be a positive USD-per-1-PEN rate. No workbook changes have been made."
+}
 
 if (-not $ReportPath) {
     $ReportPath = Join-Path $WorkingFolder "REPORT\FIN_MHK+STC+MZQ+MIL+RACO+TVS_PUR_REPORT_$ReportMonth.xlsx"
@@ -74,47 +101,80 @@ if (-not (Test-Path $ReportPath)) {
     throw "Report file not found: $ReportPath (run Build-GlobalPurchaseReport.ps1 -ReportMonth `"$ReportMonth`" first, or pass -ReportPath explicitly)."
 }
 
-# --- Step 1: fetch USD/PEN from Pacific Exchange Rate Service ---
+# --- Step 1: fetch or accept a verified USD/PEN rate ---
 $parts = $ReportMonth -split '-'
 $year = [int]$parts[0]
 $month = [int]$parts[1]
 $monthEnd = Get-Date -Year $year -Month $month -Day ([DateTime]::DaysInMonth($year, $month))
 $windowStart = $monthEnd.AddDays(-$LookbackDays)
+$rateSourceLabel = "Pacific Exchange Rate Service (fx.sauder.ubc.ca)"
 
-$body = @{
-  b  = "USD"
-  c  = "PEN"
-  rd = ""
-  fd = $windowStart.Day
-  fm = $windowStart.Month
-  fy = $windowStart.Year
-  ld = $monthEnd.Day
-  lm = $monthEnd.Month
-  ly = $monthEnd.Year
-  y  = "daily"
-  q  = "price"   # Price Notation: USD price of 1 PEN, not the default Volume Notation
-  f  = "csv"
-  o  = ""
+if ($UsdPerPen -gt 0) {
+  if (-not $RateDate -or -not $RateSource) {
+    throw "Offline rate mode requires -UsdPerPen, -RateDate (YYYY-MM-DD), and -RateSource. No workbook changes have been made."
+  }
+  try {
+    $parsedRateDate = [DateTime]::ParseExact($RateDate, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture)
+  }
+  catch {
+    throw "Invalid -RateDate '$RateDate'. Use YYYY-MM-DD, for example 2026-09-30. No workbook changes have been made."
+  }
+  if ($parsedRateDate.Date -lt $windowStart.Date -or $parsedRateDate.Date -gt $monthEnd.Date) {
+    throw "Rate date $RateDate is outside the allowed report window ($($windowStart.ToString('yyyy-MM-dd')) to $($monthEnd.ToString('yyyy-MM-dd'))). No workbook changes have been made."
+  }
+  $rateDate = $parsedRateDate.ToString('yyyy/MM/dd')
+  $rateSourceLabel = $RateSource
+  Write-Host "Using manually supplied, verified USD per 1 PEN rate ($rateSourceLabel)." -ForegroundColor Yellow
 }
+else {
+  if ($RateDate -or $RateSource) {
+    throw "-RateDate and -RateSource can only be used together with a positive -UsdPerPen value. No workbook changes have been made."
+  }
+  $body = @{
+    b  = "USD"
+    c  = "PEN"
+    rd = ""
+    fd = $windowStart.Day
+    fm = $windowStart.Month
+    fy = $windowStart.Year
+    ld = $monthEnd.Day
+    lm = $monthEnd.Month
+    ly = $monthEnd.Year
+    y  = "daily"
+    q  = "price"   # Price Notation: USD price of 1 PEN, not the default Volume Notation
+    f  = "csv"
+    o  = ""
+  }
 
-Write-Host "Querying Pacific Exchange Rate Service: USD/PEN, $($windowStart.ToString('yyyy-MM-dd')) to $($monthEnd.ToString('yyyy-MM-dd'))..."
-$response = Invoke-WebRequest -Uri "https://fx.sauder.ubc.ca/cgi/fxdata" -Method Post -Body $body -UseBasicParsing
+  Write-Host "Querying Pacific Exchange Rate Service: USD/PEN, $($windowStart.ToString('yyyy-MM-dd')) to $($monthEnd.ToString('yyyy-MM-dd'))..."
+  try {
+    $response = Invoke-WebRequest -Uri "https://fx.sauder.ubc.ca/cgi/fxdata" -Method Post -Body $body -UseBasicParsing
+  }
+  catch {
+    $detail = $_.Exception.Message
+    $webStatus = $_.Exception.Status
+    if ($detail -match '(?i)remote name|name resolution|DNS|could not be resolved|無法解析遠端名稱' -or [string]$webStatus -eq 'NameResolutionFailure') {
+      throw "Could not resolve fx.sauder.ubc.ca (DNS lookup failed). Check this PC's internet/DNS connection or VPN, then retry. No workbook changes have been made. If the site remains unreachable, verify the month-end USD per 1 PEN rate from a trusted source and rerun with -UsdPerPen <rate> -RateDate YYYY-MM-DD -RateSource <source>. Error: $detail"
+    }
+    throw "Could not retrieve USD/PEN from fx.sauder.ubc.ca. Check the network and retry. No workbook changes have been made. If the service remains unavailable, use a verified rate with -UsdPerPen <rate> -RateDate YYYY-MM-DD -RateSource <source>. Error: $detail"
+  }
 
-# Data rows look like: 2461253,"2026/07/31","Fri",0.29453
-$dataLines = $response.Content -split "`r?`n" | Where-Object { $_ -match '^\d+,"[\d/]+","\w+",[\d.]+' }
-if (-not $dataLines) {
-  throw "No USD/PEN data returned for $ReportMonth (queried $($windowStart.ToString('yyyy-MM-dd')) to $($monthEnd.ToString('yyyy-MM-dd'))). Raw response:`n$($response.Content)"
+  # Data rows look like: 2461253,"2026/07/31","Fri",0.29453
+  $dataLines = $response.Content -split "`r?`n" | Where-Object { $_ -match '^\d+,"[\d/]+","\w+",[\d.]+' }
+  if (-not $dataLines) {
+    throw "No USD/PEN data returned for $ReportMonth (queried $($windowStart.ToString('yyyy-MM-dd')) to $($monthEnd.ToString('yyyy-MM-dd'))). No workbook changes have been made."
+  }
+
+  $lastLine = $dataLines[-1]
+  $fields = $lastLine -split ','
+  $rateDate = $fields[1].Trim('"')
+  $usdPerPen = [double]$fields[3]
+
+  if ($rateDate -ne $monthEnd.ToString('yyyy/MM/dd')) {
+    Write-Host "Note: $($monthEnd.ToString('yyyy-MM-dd')) had no trading data; using the most recent available date instead." -ForegroundColor Yellow
+  }
 }
-
-$lastLine = $dataLines[-1]
-$fields = $lastLine -split ','
-$rateDate = $fields[1].Trim('"')
-$usdPerPen = [double]$fields[3]
-
-if ($rateDate -ne $monthEnd.ToString('yyyy/MM/dd')) {
-  Write-Host "Note: $($monthEnd.ToString('yyyy-MM-dd')) had no trading data; using the most recent available date instead." -ForegroundColor Yellow
-}
-Write-Host "USD/PEN as of $rateDate (Price Notation, i.e. USD per 1 PEN): $usdPerPen" -ForegroundColor Green
+Write-Host "USD/PEN as of $rateDate (USD per 1 PEN): $usdPerPen; source: $rateSourceLabel" -ForegroundColor Green
 
 # --- Step 2: write into the Report's Exchange Rate sheet, Block 1 (HKD basis) ---
 function Release-Com($obj) { if ($obj) { [System.Runtime.Interopservices.Marshal]::ReleaseComObject($obj) | Out-Null } }
@@ -203,6 +263,7 @@ try {
     Write-Host "File          : $ReportPath"
     Write-Host "Sheet/Row     : 'Exchange Rate' row $targetRow (month $ReportMonth)"
     Write-Host "Column $penColLetter (PEN, HKD basis) <- $hkdPerPen   (= $usdPerPen USD/PEN x $hkdPerUsdRaw HKD/USD)"
+    Write-Host "Rate source   : $rateSourceLabel"
     Write-Host "Column $block2ColLetter (PEN=>USD formula) recomputed to: $writtenBackUsdPerPen   (sanity check - should be close to the fetched $usdPerPen)"
     Write-Host "Saved successfully (confirmed via on-disk file timestamp)." -ForegroundColor Green
 }

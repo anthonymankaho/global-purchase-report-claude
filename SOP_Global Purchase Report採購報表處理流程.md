@@ -1,6 +1,6 @@
 # Global Purchase Report 標準作業程序 (SOP)
 
-**版本**: v1.17（`New-MonthlyEmailDraft.ps1` Cc 收件人清單移除 WSCheung——Ken 告知已離職，目前為 15 人（3位To + 12位Cc）；v1.16 HTML 互動版報表新增：點擊分類/儲存格直接跳轉 Data 頁篩選、GLID/Fittings/Packaging/Coating 欄寬可拖曳調整、新增 ProdFamiDesc/Part_MfgCat_Code 篩選、Dashboard 新增 SKU vs Part 家族圓餅圖與拆分 KPI 卡片、歡迎彈窗改版；來源 Excel 新增第 37 欄 ProdFamiDesc，新增一次性工具 `Copy-ProdFamiDescToSource.ps1`；⚠️ ProdFamiDesc 目前不含 TVS、MAZ 資料；v1.15 修復 `OUTSIDETEMP_VBA_PRACTICE.xlsm` 已損壞/缺失的 `data` 命名範圍，25個樞紐分析表恢復可重新整理；2026-07月結的 Gmail 草稿與 Slack 貼文皆已真的送出；v1.14 新增每月通知/發布自動化：`New-MonthlyEmailDraft.ps1` Gmail 草稿＋`New-MonthlySlackPost.ps1` Slack 頻道貼文含 HTML 報表附件，見第 9 節；v1.13 完成 2026-07 月結；新增 `Get-PenExchangeRate.ps1` 補 MAZ 的 PEN 匯率缺口；`Publish-OutsideReport.ps1` 擴充為同步兩個外部工作檔、加入啟動前 EXCEL.EXE 安全檢查與手動計算模式效能修正；新增 `PowerShell-Commands.md`/`PowerShell-Runtime-Report.md`/`SOP-Quick-Guide.md` 三份快速參考文件；v1.12 修復 `OUTSIDETEMP.xlsx` 已損壞的 `data` 命名範圍，18 個樞紐分析表恢復可重新整理；v1.11 HTML 互動版報表：新增項目收合按鈕、修正 DB 顏色不一致與 scrollX 欄位錯位 bug、欄寬自動調整、恢復 Ignore/Consider 篩選器、Exchange Rate 頁重建為 DataTables 互動表格、修正來源檔案自動偵測改依報表期間排序、VBA 按鈕沙盒測試；v1.10 HTML 互動版報表：明細表排序/分隔線/Max_DB/Min_DB 衍生欄位、TEMP 工作檔+`-Publish` 慣例；v1.9 修正 Exchange Rate 匯出 bug、新增 Item Code 篩選器；v1.8 新增第 8 節「HTML 互動版報表」：獨立工具，把當月最終報表轉成單一自包含互動式 HTML 檔案，刻意不接自動化流程；v1.7 AA/AB 改為全程人工處理：`Build-GlobalPurchaseReport.ps1` 不再碰 AA/AB 及其依賴欄位，新增 `Complete-FormulaColumns.ps1` 接手 AC/AD/AE/AF/AG/AH/AI + New Vendors 分頁，新增步驟3.5/3.6；v1.6 新增第3.1節「第2列母版公式目前版本」存證表，記錄2026-08人工效能優化）
+**版本**: v1.19（2026-10-27 修正交付腳本計算模式設定時機、依表頭讀取欄數並驗證目的 Table/樞紐刷新；未重新執行交付流程。）
 **適用範圍**: 每月 Global Purchase Report（MHK/STC/MZQ/MIL/RACO/TVS/MAZ 採購資料彙總）產製流程
 **取代對象**: 原本由 UiPath RPA 專案 "Global Purchase Report" 自動執行的合併/彙總/報表產出步驟
 
@@ -84,10 +84,10 @@
   ⚠️ MAZ 有 PEN（秘魯幣）交易，但目前 `STANDARD EXCHANGE RATE` 來源檔沒有 PEN 匯率，Report 的 Exchange Rate 分頁本來就有 PEN 欄位但長期空白，屬已知缺口（見第 5 節）。
 
 - **Report 共用公式（Q:S 匯率換算、U:AD 廠商/料號/商品標準化與比價）**：所有實體都用同一組公式，公式母版固定在 Report 的**第 2 列**（`Q2:AJ2`）。
-  ⚠️ **重要架構變更**：Report 樣板檔案裡，第 3 列到歷史最後一列（目前約 29,511 列）的 Q:AJ 已經從「即時公式」**手動轉成靜態數值**（只留第 2 列是公式），目的是避免每次新增資料時，Excel 觸發全部 3 萬多列重新計算（尤其 U:AD 的 MAXIFS/MINIFS 是整欄掃描，資料量大時會讓 Excel 卡住 10 分鐘以上甚至更久）。
+  ⚠️ **重要架構變更**：報表的歷史計算欄多數凍結為值，以免新增資料時觸發大量重算。惟2026-10-27唯讀檢視的2026-08主報表中，W（Std Comm）欄仍有50,262列公式，與本節原先概述不一致。Q:S等欄位也可能按缺少的匯率保留空白值。每月核對應看當前報表的實際公式和值；不可假設所有歷史欄均已凍結。
   Q2:AJ2 公式的自動填入/凍結已由 `Build-GlobalPurchaseReport.ps1` 自動處理（依相依順序一欄一欄填、算完立刻凍結，見第 4 節步驟 3 的執行畫面）。
 
-### 3.1 第 2 列母版公式目前版本（2026-08-03 校對，含 2026-08 人工優化後的版本）
+### 3.1 第 2 列母版公式存證（人工校對於2026-08-03）
 
 ⚠️ **這份表格是「目前實際版本」的存證，之後每次人工調整第 2 列公式（例如效能優化）都要回來更新這裡，否則 SOP 會跟真實檔案脫節。**
 
@@ -116,6 +116,8 @@
 | AH | `=IF(Y2="ignore","",IFERROR(VLOOKUP(AE2,AC$2:AF$100000,4,FALSE),AF2))` | 改有界範圍 |
 | AI | `=IFERROR(VLOOKUP(H2,Part_MfgCat_Code!B:C,2,FALSE),IFERROR(VLOOKUP(MID(H2,1,7),Part_MfgCat_Code!A:C,3,FALSE),""))` | 未變更，查找表仍是整欄 |
 | AJ | `=VLOOKUP(W2,SCOMM!A:B,2,FALSE)` | 未變更，查找表仍是整欄 |
+
+⚠️ 本表是2026-08人工校對的公式快照，不含後續新增的AK:AM產品家族欄。2026-10唯讀檢視的主報表已是39欄，且第2列公式/查找範圍有更新。修改公式前請以當前報表第2列為準；確認公式後再更新本表。
 
 **尚未優化的整欄查找**（下次若還嫌慢可以繼續處理）：`U` 的 `'Std Vendor Name'!D:E`、`AI` 的 `Part_MfgCat_Code!B:C`/`A:C`、`AJ` 的 `SCOMM!A:B`。
 
@@ -209,22 +211,22 @@ Saved: ...\REPORT\FIN_MHK+STC+MZQ+MIL+RACO+TVS_PUR_REPORT_2026-06.xlsx
 .\New-ReportAuditSummary.ps1
 ```
 
-只唯讀開啟報表，不會修改任何東西。會列出：(1) 報表最後一列列號、(2) 當月六個實體各自的資料列數、(3) 當月總列數，並存成 `REPORT\AuditSummary_<月份>.md`。可以拿這份跟腳本執行時畫面上顯示的各實體列數互相核對。
+只唯讀開啟報表，不會修改任何東西。會列出：(1) 報表最後一列列號、(2) 當月七個實體各自的資料列數、(3) 當月總列數，並存成 `REPORT\AuditSummary_<月份>.md`。可以拿這份跟腳本執行時畫面上顯示的各實體列數互相核對。
 
 ### 步驟 7：開啟最終報表、人工檢查
 
 1. 按「資料」→「全部重新整理」
-2. 確認匯率（Q 欄）有沒有算出來——若當月匯率表還沒補（見第 2.1 節），這裡會是空白，屬正常現象，等匯率補齊後重新整理即可
+2. 確認匯率（Q欄）有無值。若缺少匯率，補齊後，把 Q2:S2 複製到受影響的當月交易列，計算並檢查結果，再貼上為值；Build 已凍結原結果，單純按全部重新整理不會更新凍結值。
 3. 檢查各實體列數是否合理（可對照步驟 6 的稽核摘要，或腳本執行時畫面上顯示的數字）
 4. 確認無誤後，依公司規定歸檔 / 寄送（Email 寄送、MMS 上傳仍為人工）
 
-### 步驟 3.7：（若當月 MAZ 有 PEN 交易）補 PEN 匯率缺口
+### 步驟 3.7：（若當月 MAZ 有 PEN 交易）補匯率並重算資料列
 
-```powershell
-.\Get-PenExchangeRate.ps1 -ReportMonth "2026-07"
-```
+先設定本月參數（例：`$ReportMonth = "2026-09"`），再執行 ` .\Get-PenExchangeRate.ps1 -ReportMonth $ReportMonth`。主腳本產出報表後，此工具從 Pacific Exchange Rate Service 取得 USD/PEN，換算後寫入 Exchange Rate 分頁。
 
-需等步驟 3（`Build-GlobalPurchaseReport.ps1`）產出當月報表後才能執行。詳見第 5 節「MAZ 的 PEN 匯率缺口」。
+若錯誤訊息為「無法解析遠端名稱 fx.sauder.ubc.ca」，代表 DNS/網路無法連到匯率網站。腳本會停止且不修改報表；先確認網路、DNS 或 VPN 後重試。若仍無法連線，從可信來源核對報表月底當天及往前 7 天範圍內的 **USD per 1 PEN** 匯率後，可用 `-UsdPerPen`、`-RateDate`（YYYY-MM-DD）及 `-RateSource` 傳入；例如 ` .\Get-PenExchangeRate.ps1 -ReportMonth $ReportMonth -UsdPerPen 0.2945 -RateDate "2026-09-30" -RateSource "來源名稱或網址"`。請替換範例匯率、日期與來源；匯率方向必須是 1 PEN 等於多少 USD。腳本會檢查日期範圍，並在寫入前完成匯率輸入驗證。
+
+⚠️ 主腳本已把資料列 Q:S 凍結成值。若建置時 PEN 匯率空白，補匯率不會自動更新 MAZ PEN 列。補完後在 Excel 篩出當月 PO_CUR = PEN 的 MAZ 列，把 Q2:S2 複製到該列，計算 Q:S，確認匯率、美元單價及金額均有值，再將結果複製並選擇性貼上為值，保存報表。
 
 ### 步驟 8：（如有需要）產出外部交付檔案（OUTSIDETEMP → 當月交付檔）
 
@@ -236,7 +238,7 @@ Saved: ...\REPORT\FIN_MHK+STC+MZQ+MIL+RACO+TVS_PUR_REPORT_2026-06.xlsx
 
 這支腳本會：
 1. 從步驟 3-7 產出的月報（`REPORT\FIN_..._PUR_REPORT_2026-07.xlsx`）讀取「MHK+STC+MZQ+MIL+RACO Data」分頁的**數值**（非公式）。
-2. 開啟固定的工作檔 `Global Purchase Report RPA\REPORT\FIN_MHK+STC+MZQ+MIL+RACO_PUR_REPORT-OUTSIDETEMP.xlsx`，先延伸其 `Data` 分頁的 `Table1` 表格範圍，再把數值寫入（**只寫資料列，不覆寫表頭列**——詳見下方「已知限制」的重要技術備註）。
+2. Publish-OutsideReport.ps1 依來源最後一個表頭動態判斷欄數；寫入前核對目的檔表頭及 Table 欄數，不一致便中止。計算模式改在來源活頁簿開啟後設定，並納入 try/finally 清理，避免 Excel 在設定失敗時殘留。樞紐刷新失敗時會中止該工作檔存檔。⚠️ 2026-08唯讀檢視發現 OUTSIDETEMP 與 VBA 練習檔的定義名稱/樞紐快取來源不一致；腳本修改後尚未重新執行，須先人工修復並驗證兩份工作檔，再正式發布。
 3. **v1.13 新增**：同一批數值同時同步進 `OUTSIDETEMP_VBA_PRACTICE.xlsm`（VBA 按鈕原型練習檔，結構與 OUTSIDETEMP.xlsx 相同），僅存檔於原地，不產生另存新檔的交付版本。可用 `-VbaPracticePath ""` 略過這個檔案。
 4. 重新整理兩個檔案的所有樞紐分析表。
 5. 存檔（覆寫 OUTSIDETEMP.xlsx／OUTSIDETEMP_VBA_PRACTICE.xlsm 本身），OUTSIDETEMP.xlsx 再另存新檔到同一個 REPORT 資料夾，檔名格式 `FIN_MHK+STC+MZQ+MIL+RACO_PUR_REPORT-(1-M)YYYY_YYYYMMDD_RV0.xlsx`（`M`=當月月份數字、`YYYY`=年、`YYYYMMDD`=執行當天日期；若同一天重跑，`RV` 編號會自動遞增，不會覆蓋前一次的交付檔）。
@@ -257,12 +259,13 @@ Saved: ...\REPORT\FIN_MHK+STC+MZQ+MIL+RACO+TVS_PUR_REPORT_2026-06.xlsx
 | **TVS 的 PBRT_TYPE/PO_CUR 為寫死常數** | 目前根據實測樣本都是 "B"/"EUR"，若未來 TVS 出現非歐元交易，此假設需要重新驗證 |
 | **MAZ 的 PBRT_TYPE 為寫死常數，PO_CUR 不是** | PBRT_TYPE 固定 "B"；PO_CUR 是直接複製來源欄位（MAZ 有 USD、PEN 等多幣別交易，不能當常數） |
 | **MIL 的 PART TYPE（K 欄）需要正規化** | 來源檔案 K 欄其實是「Div」部門代碼（1,2,6,7,8,9，偶有 "M"），不是 B/O 分類，曾經因此讓 AG 欄（Max Vendor）VLOOKUP 出現 #N/A。腳本已修正：數字 1-9 一律轉成 "B"（MZQ 不受影響，來源本來就是正確的 B/O） |
-| **MAZ 的 PEN 匯率缺口** | `STANDARD EXCHANGE RATE` 來源檔沒有 PEN（秘魯幣）匯率。**已於 v1.13 提供解法**：`Get-PenExchangeRate.ps1 -ReportMonth "yyyy-MM"` 從 Pacific Exchange Rate Service 抓 USD/PEN，換算成 HKD/PEN 後寫入 Exchange Rate 分頁 M欄（Block 2 的 PEN⇒USD 公式維持活公式，不寫死數字）。需在 `Build-GlobalPurchaseReport.ps1` 產出當月報表後才能執行，屬每月手動步驟（見第 4 節步驟 3.7） |
+| **MAZ PEN 匯率及重算** | Q:S 結果已凍結為值。若建置時 PEN 匯率空白，補 Exchange Rate 分頁不會更新 MAZ PEN 列。補匯率後須在 Excel 重算該月 PEN 列 Q:S，確認有值再保存及發布。 |
 | **Excel COM 穩定性** | 測試過程中曾遇到 Excel 卡死（`Not Responding`）與殘留背景程序，腳本已加上啟動前自動清除殘留 Excel 程序的邏輯，但仍建議執行前先手動確認工作管理員沒有殘留的 EXCEL.EXE |
 | **MAZ 若某月無資料** | 腳本會自動偵測 `MAZ\MAZ.xlsx` 是否存在，不存在就跳過該實體並印出警告，不會中斷整個執行 |
 | **Email 寄送 / MMS 上傳** | 不在本專案自動化範圍內，維持人工 |
-| **ProdFamiDesc（第37欄）不含 TVS、MAZ 資料** | 來源自「Meyer MHK portal login automation」專案下載的正式資料，目前範圍不含 TVS、MAZ 兩個實體；已另行申請這兩個實體的對應資料，取得前這兩個實體的 Product Family 篩選/圖表會顯示空白或「(No Family Assigned)」|
-| **⚠️ 寫入 Excel Table（ListObject）時絕對不能覆寫表頭列** | 實測發現：用一個大陣列一次性覆寫整個表格範圍（含第 1 列表頭），即使表頭文字完全相同，也會讓 Excel 的 Table 物件損毀（`ListObjects.Count` 變成 0），導致所有依附在這個 Table 上的樞紐分析表全部失效。`Publish-OutsideReport.ps1` 已修正為「先延伸表格範圍、再只寫入第 2 列以後的資料列」，經測試存檔、重新開啟後 Table 都能正常存活。**未來如果修改這支腳本或寫類似的 Table 覆寫邏輯，絕對不要把表頭列（第 1 列）納入批次寫入的範圍** |
+| **ProdFamiDesc 覆蓋率** | 2026-08 HTML 中 TVS 3,274 筆全空；MAZ 454 筆中347筆有值。先前「兩實體均無值」的紀錄已過時。其他欄位及月份須另行核對。 |
+| **外部交付檔樞紐來源** | 唯讀檢視的 2026-08 檔有 data = #REF!；三個快取引用 Table1、表格1、data，而 Data 表格名為表格1。VBA 練習檔沒有 data 名稱，快取混用 A1:AK/A1:AM。Excel 刷新未驗證，使用前逐項核對。|
+| **⚠️ 寫入 Excel Table（ListObject）時絕對不能覆寫表頭列；並須依現有39欄更新來源欄數與樞紐來源** | 實測發現：用一個大陣列一次性覆寫整個表格範圍（含第 1 列表頭），即使表頭文字完全相同，也會讓 Excel 的 Table 物件損毀（`ListObjects.Count` 變成 0），導致所有依附在這個 Table 上的樞紐分析表全部失效。`Publish-OutsideReport.ps1` 已修正為「先延伸表格範圍、再只寫入第 2 列以後的資料列」，經測試存檔、重新開啟後 Table 都能正常存活。**未來如果修改這支腳本或寫類似的 Table 覆寫邏輯，絕對不要把表頭列（第 1 列）納入批次寫入的範圍** |
 
 ---
 
@@ -305,6 +308,8 @@ Saved: ...\REPORT\FIN_MHK+STC+MZQ+MIL+RACO+TVS_PUR_REPORT_2026-06.xlsx
 
 ---
 
+| 2026-10-27 | v1.18 | 唯讀核對39欄、產品家族覆蓋及外部交付檔樞紐來源；補充 PEN 匯率後重算步驟並校正15人郵件收件數。|
+| 2026-10-27 | v1.19 | 修正 Publish-OutsideReport.ps1 在開啟來源工作簿前設定 Calculation 導致 0x800A03EC 的問題，並把 Excel 設定放進 try/finally；來源欄數改由最後一個表頭動態判斷，目的檔表頭/Table欄數不一致或樞紐刷新失敗時拒絕存檔。未重新執行交付流程；樞紐快取/定義名稱仍須先人工核對。|
 ## 8. HTML 互動版報表（獨立工具）
 
 `Global Purchase Report RPA\HTML_Report_Generator\` 底下的 `Generate-PurchaseReportHtml.ps1`，把 `REPORT\` 資料夾裡當月的最終報表轉成一份單一檔案的互動式 HTML（Dashboard 圖表與篩選器、GLID/Fittings/Packaging/Coating 明細表可即時篩選、Exchange Rate 改成跟 Data 頁一樣的互動式表格），方便不方便開 Excel 的人（例如用手機/平板）瀏覽報表。
@@ -332,7 +337,7 @@ cd "C:\Users\User\Desktop\Global Purchase Report Claude\Global Purchase Report R
 
 **Product Family 篩選（ProdFamiDesc，2026-09-02 新增）**：Dashboard、GLID、Fittings 三頁新增 `ProdFamiDesc` 篩選（Packaging、Coating 因為這個欄位對應的 Std Comm 代碼 100% 空白，經實測資料確認後刻意不加）。Dashboard 另外新增「SKU Family」（Std Comm = SKU-）與「Part Family」（僅 Fittings + GLID，不含 Packaging/Coating/LID-）兩個 Top10+Other 圓餅圖；空白的 ProdFamiDesc 值明確標示為「(No Family Assigned)」（曾經誤顯示成難以理解的字面 "null"，已修正），並給予獨立的灰色（跟 Top10 以外彙總用的「Other」灰色不同）。KPI 卡片同時拆成「SKU (SKU-)」與「Part (Other Comm)」兩區，各自顯示 4 項指標＋該項指標在 SKU/Part 兩區合計中的加權百分比。Data 分頁另外新增 `Part_MfgCat_Code` 篩選。
 
-⚠️ **已知缺口：ProdFamiDesc 目前不含 TVS 與 MAZ 資料**——來源 Excel 的 `ProdFamiDesc` 欄（VLOOKUP 自 MMS DATA）是透過另一個獨立專案「Meyer MHK portal login automation」下載的正式資料建立的，該專案目前的下載範圍不包含 TVS、MAZ 兩個實體，已另行申請這兩個實體的對應資料。在拿到之前，這兩個實體的 Product Family 篩選/圖表看起來會是空白或「(No Family Assigned)」，屬已知限制而非程式錯誤。
+⚠️ **Product Family 覆蓋依月份而異**：2026-08 HTML 中，TVS 的 ProdFamiDesc 全空（3,274筆），MAZ 有347/454筆非空。其他新增欄位及月份尚未逐一核對。
 
 **已知限制**：需要 Node.js（COM 抽取資料後由 `build_report.js` 組出最終 HTML，vendor 端函式庫已內附在 `HTML_Report_Generator\vendor\`，不需連網）。
 
@@ -352,7 +357,7 @@ cd "C:\Users\User\Desktop\Global Purchase Report Claude\Global Purchase Report R
 .\New-MonthlyEmailDraft.ps1 -ReportMonth "2026-07"
 ```
 
-比照原本 UiPath RPA 的 `SendMailX` 活動格式（主旨 `Global purchase report (1-M)YYYY - PO Price Comparison`，內文與收件人清單皆取自舊版 `Project_Notebook.xlsx` 的 Scratchpad 分頁，經使用者確認仍然準確）：3位 To + 13位 Cc。
+比照原本 UiPath RPA 的 `SendMailX` 活動格式（主旨 `Global purchase report (1-M)YYYY - PO Price Comparison`，內文與收件人清單皆取自舊版 `Project_Notebook.xlsx` 的 Scratchpad 分頁，經使用者確認仍然準確）：3位 To + 12位 Cc（共15人）。
 
 只會建立 **Gmail 草稿，絕不自動寄出**（跟舊版 RPA 一樣，刻意不自動附加報表檔案——檔案太大，base64 編碼後容易超過 Gmail 附件上限，需要手動附加＋用 Google Drive 分享，腳本執行完會印出提醒）。
 
@@ -368,7 +373,7 @@ OAuth 設定沿用「Weekly Exchange Report - CLAUDE」專案已經授權好的 
 
 ⚠️ **跟 Gmail 草稿不同，Slack 沒有「草稿」機制**——執行 `New-MonthlySlackPost.ps1` 會**立刻真實發布**到頻道，所有頻道成員馬上看得到，沒有二次確認的機會。
 
-跟 Gmail 不同的是，Slack 這邊**會真的附加檔案**：附加的是互動式 HTML 報表（`FIN_Global_Purchase -Report_html.html`，約28MB），因為 Slack 的檔案上傳限制遠高於 Gmail 附件的 25MB 上限，28MB 綽綽有餘。使用 Slack 較新版的三步驟外部上傳流程（`files.getUploadURLExternal` → 上傳原始位元組 → `files.completeUploadExternal`，帶 `initial_comment` 當作訊息內容），因為舊版 `files.upload` 已被 Slack 棄用。
+跟 Gmail 不同的是，Slack 這邊**會真的附加檔案**：附加的是互動式 HTML 報表（`FIN_Global_Purchase -Report_html.html`，約36MB（2026-08 快照）），因為 Slack 的檔案上傳限制遠高於 Gmail 附件的 25MB 上限，此大小仍在 Slack 上傳流程可處理的範圍。使用 Slack 較新版的三步驟外部上傳流程（`files.getUploadURLExternal` → 上傳原始位元組 → `files.completeUploadExternal`，帶 `initial_comment` 當作訊息內容），因為舊版 `files.upload` 已被 Slack 棄用。
 
 一次性設定見 `SLACK_SETUP.md`：需要在公司 Slack workspace 建立一個 App（`Global Purchase Report Bot`），加上 `chat:write`、`chat:write.public`、`files:write` 三個 Bot Token Scopes，安裝到 workspace 後取得 Bot Token，執行 `.\Save-SlackToken.ps1` 貼上並加密儲存。若 Bot 要發到私人頻道，還需要在該頻道用 `/invite @Global Purchase Report Bot` 手動邀請加入（公開頻道則不用，`chat:write.public` 已涵蓋）。
 

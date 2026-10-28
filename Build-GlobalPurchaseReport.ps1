@@ -403,11 +403,13 @@ function Process-CumulativeDirect($excel, $sourcePath, [string]$sheetName, [int]
 
 function Process-RACO($excel, $sourcePath, [string]$month) {
     $wb = Open-Workbook $excel $sourcePath $true
-    $sheetName = "RACO收货记录"
+    # Use Unicode code points because Windows PowerShell 5.1 can misread UTF-8
+    # scripts without a BOM, turning this sheet name into mojibake.
+    $sheetName = "RACO$([char]0x6536)$([char]0x8D27)$([char]0x8BB0)$([char]0x5F55)"
     $sheetExists = $false
     foreach ($s in $wb.Sheets) { if ($s.Name -eq $sheetName) { $sheetExists = $true } }
     if (-not $sheetExists) {
-        Write-Host "[RACO] Sheet '$sheetName' not found, falling back to first sheet" -ForegroundColor Yellow
+        Write-Host "[RACO] Preferred Chinese-named sheet not found, falling back to first sheet" -ForegroundColor Yellow
         $sheetName = $wb.Sheets.Item(1).Name
     }
     $wb.Close($false) | Out-Null; Release-Com $wb
@@ -636,21 +638,29 @@ function Update-ExchangeRateSheet($excel, [string]$ratePath, $reportWs, [string]
 # (AC/AF/AD/AE/AG/AH/AI's dependency notes live in Complete-FormulaColumns.ps1, where they're now filled)
 function Set-FormulaColumnsFrozen($ws, [int]$startRow, [int]$endRow, [string[]]$columns) {
     if ($endRow -lt $startRow) { return }
-    $xlPasteFormulas = -4123
-    $xlPasteValues = -4163
     foreach ($col in $columns) {
         $target = "$col$startRow`:$col$endRow"
-        $ws.Range("$col`2").Copy() | Out-Null
-        $ws.Range($target).PasteSpecial($xlPasteFormulas) | Out-Null
-        $ws.Calculate() | Out-Null
-        # Freeze to static values via Copy+PasteSpecial(values) - NOT "$rng.Value2 = $rng.Value2"
-        # (that self-reassignment trick throws "Specified cast is not valid" via COM interop; found
-        # this the hard way). Copy+PasteSpecial is Excel's own native value-freeze mechanism.
-        $ws.Range($target).Copy() | Out-Null
-        $ws.Range($target).PasteSpecial($xlPasteValues) | Out-Null
+        $targetRange = $ws.Range($target)
+        try {
+            # FormulaR1C1 preserves relative references while filling the entire target range,
+            # without depending on Excel's clipboard/PasteSpecial state.
+            $sourceFormula = $ws.Range("${col}2").FormulaR1C1
+            if ([string]::IsNullOrWhiteSpace([string]$sourceFormula)) {
+                throw "The row 2 formula is blank."
+            }
+            $targetRange.FormulaR1C1 = $sourceFormula
+            $ws.Calculate() | Out-Null
+
+            # Snapshot the calculated values before writing them back. Keeping this in a variable
+            # avoids the COM self-assignment cast error seen with $range.Value2 = $range.Value2.
+            $calculatedValues = $targetRange.Value2
+            $targetRange.Value2 = $calculatedValues
+        }
+        catch {
+            throw "Failed to fill and freeze column $col for rows $startRow-$endRow`: $($_.Exception.Message)"
+        }
         Write-Host "  [$col] filled, calculated, frozen"
     }
-    $ws.Application.CutCopyMode = $false
 }
 
 # NOTE: AA/AB filling (formerly Set-MaxMinPriceColumns, a PowerShell-computed replacement for their

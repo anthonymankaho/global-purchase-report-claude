@@ -14,14 +14,15 @@ Here are all the PowerShell commands for this project's monthly pipeline:
 ## 0. 切換到專案資料夾 + 設定當月月份 / Go to the project folder + set this month's period
 
 ```powershell
-cd "C:\Users\User\Desktop\Global Purchase Report Claude"
-$ReportMonth = "2026-07"
+Set-Location -LiteralPath "C:\Users\User\Desktop\Global Purchase Report Claude"; $ReportMonth = "2026-09"
 ```
 
-> ⚠️ **每個月只需要改這一行**：`$ReportMonth = "2026-07"` 改成 `"2026-08"`（或當月月份），下面所有指令都會自動套用，不用逐一修改。
+> ⚠️ **每個月只需要改這一行**：把 `$ReportMonth = "2026-09"` 改成當月月份，下面所有指令都會自動套用，不用逐一修改。
+> 請整行執行，或在多個指令之間保留換行/分號。不要把 `Set-Location` 和 `$ReportMonth` 直接接在一起；否則 PowerShell 會把變數指派當成 `cd` 的引數並報位置參數錯誤。
 > 但這個變數只在**同一個** PowerShell 視窗裡有效——如果中途關掉視窗重開，要記得先重新執行這一行，再繼續下面的步驟。
 >
-> ⚠️ **Only this one line changes each month**: update `$ReportMonth = "2026-07"` to `"2026-08"` (or the current period) — every command below picks it up automatically, no need to edit each one individually.
+> ⚠️ **Only this one line changes each month**: update `$ReportMonth = "2026-09"` to the reporting month — every command below picks it up automatically, no need to edit each one individually.
+> Run the whole line, or keep a newline/semicolon between commands. Do not concatenate `Set-Location` directly with `$ReportMonth`; PowerShell will treat the assignment as an extra `cd` argument and report a positional-parameter error.
 > This variable only lives in the **same** PowerShell window — if you close and reopen the window partway through, re-run this line first before continuing with the steps below.
 
 ## 1. 每月主要建置 / Monthly main build
@@ -38,6 +39,10 @@ Q:S 跟 U/V/W/Y/Z/AJ 會自動填好。**AA/AB 不會**——腳本執行完，�
 Q:S and U/V/W/Y/Z/AJ get filled automatically. **AA/AB do not** — the script prints the new row range;
 manually copy `AA2:AB2` down to that range, calculate, confirm it looks right, then proceed to Step 3.
 
+若建置曾在公式欄位填入時出現 `Range.PasteSpecial` 錯誤，請使用已更新的 `Build-GlobalPurchaseReport.ps1`，關閉 Excel 後以相同月份重跑上方指令。失敗的那次沒有存入當月資料；輸出路徑可能只有上一個月報表的複本。重跑會從自動偵測的上一個月報表重新建立當月輸出，通常不需要加 `-Force`。只有要刻意略過重複月份檢查時才使用下方的 `-Force` 指令。
+
+If a previous build stopped with a `Range.PasteSpecial` error while filling formula columns, use the updated `Build-GlobalPurchaseReport.ps1`, close Excel, and rerun the command above for the same month. The failed run did not save the new month's data; the output path may contain only a copy of the prior-month report. The retry rebuilds the month's output from the auto-detected prior-month report. Usually do not add `-Force`; reserve it for intentionally bypassing the duplicate-month safety check.
+
 ## 2. 補 MAZ 的 PEN 匯率缺口（若當月 MAZ 有 PEN 幣別交易才需要）/ Fill MAZ's PEN rate gap (only if this month's MAZ has PEN-currency rows)
 
 ```powershell
@@ -50,6 +55,16 @@ manually copy `AA2:AB2` down to that range, calculate, confirm it looks right, t
 Requires Step 1's output to already exist. Fetches USD/PEN from the Pacific Exchange Rate Service,
 converts it to HKD/PEN (× that month's column K USD rate), writes it into the report's "Exchange Rate"
 tab column M; column Z's PEN→USD formula recomputes on its own — never a hardcoded number.
+
+若出現「無法解析遠端名稱 fx.sauder.ubc.ca」，代表電腦的 DNS/網路無法連到匯率網站；腳本會停止且不會改報表。先確認網路、DNS 或 VPN 後重試。若服務仍不可用，請從可信來源人工核對報表月底當天及往前 7 天範圍內的 **USD per 1 PEN** 匯率，再用以下參數執行（來源與匯率日期必填）：
+
+If PowerShell reports that it cannot resolve `fx.sauder.ubc.ca`, the PC could not reach the rate site through DNS/network; the script stops without changing the report. Check internet, DNS or VPN and retry. If the service remains unavailable, verify the **USD per 1 PEN** rate from a trusted source for a date from month-end through the preceding 7 days, then run:
+
+```powershell
+.\Get-PenExchangeRate.ps1 -ReportMonth $ReportMonth -UsdPerPen 0.2945 -RateDate "2026-09-30" -RateSource "Verified source name or URL"
+```
+
+Replace the example rate, date and source with the verified quote. Do not enter PEN per USD; the input must be USD for one PEN.
 
 ## 3. 【人工填好 AA/AB 之後】填 AC/AD/AE/AF/AG/AH/AI + New Vendors 分頁 / [After manually filling AA/AB] fill AC–AI + New Vendors sheet
 
@@ -92,18 +107,31 @@ Value-copies the month's report Data tab into both **OUTSIDETEMP.xlsx** and
 update automatically). OUTSIDETEMP.xlsx is saved then Save-As'd as the dated deliverable (auto-bumps
 the RV number if rerun the same day); the VBA practice file is saved in place only.
 
+先確認所有 Excel 視窗已儲存並關閉；腳本要求電腦上完全沒有 EXCEL.EXE 執行中。可先查看目前程序：
+Before running, save and close every Excel window; the script requires that no EXCEL.EXE process is running. Check the current processes first:
+
+```powershell
+Get-Process EXCEL -ErrorAction SilentlyContinue | Select-Object Id, MainWindowTitle, StartTime
+```
+
+若仍列出程序，先確認對應活頁簿已儲存並正常關閉，再重新執行。沒有視窗標題的背景 Excel 程序也會讓腳本中止；請先確認沒有未存檔工作，再於工作管理員關閉殘留程序。不要用 `-Force` 嘗試繞過這項安全檢查。
+If a process is still listed, make sure its workbook is saved and close Excel normally, then retry. A background Excel process with no window title also blocks the script; confirm there is no unsaved work before ending a confirmed orphan in Task Manager. Do not use `-Force` to bypass this safety check.
+
+腳本會依來源 Data 分頁最後一個表頭動態判斷欄數，並在寫入前核對兩份工作檔的表頭與 Table 欄數；若欄位不一致會中止。樞紐分析表刷新失敗時也會中止該工作檔的存檔。執行前仍須確認 OUTSIDETEMP 與 VBA 練習檔的樞紐來源/定義名稱已修復且相符；不一致時先修復範本，不要略過檢查。
+The script derives the column count from the source Data headers and checks both working files' headers and table widths before writing. It aborts on a mismatch, and refuses to save a workbook if any PivotTable refresh fails. Confirm the OUTSIDETEMP and VBA practice files' pivot sources and defined names are repaired and aligned before running; fix a mismatch in the working files first.
+
 ```powershell
 .\Publish-OutsideReport.ps1 -ReportMonth $ReportMonth
 ```
 
 > ⚠️ 這支腳本會直接改動 `OUTSIDETEMP.xlsx` 和 `OUTSIDETEMP_VBA_PRACTICE.xlsm` 本身（不是唯讀範本）。
-> 執行前若偵測到任何 EXCEL.EXE 在跑（可能是這兩個檔案正開在您自己的視窗），腳本會直接報錯中止——
-> **不會**自動強制關閉，請先自行存檔關閉所有 Excel 視窗再重新執行。
+> 執行前若偵測到任何 EXCEL.EXE 在跑（包含沒有視窗的背景程序），腳本會直接報錯中止——
+> **不會**自動強制關閉。請先自行存檔並關閉活頁簿，再確認沒有殘留程序後重新執行。
 >
 > ⚠️ This script modifies `OUTSIDETEMP.xlsx` and `OUTSIDETEMP_VBA_PRACTICE.xlsm` directly (not
-> read-only templates). If any EXCEL.EXE is detected running beforehand (possibly these two files open
-> in your own window), the script throws and aborts — it will **not** force-close anything; save and
-> close all Excel windows yourself first, then re-run.
+> read-only templates). If any EXCEL.EXE is detected beforehand (including a background process with no
+> window), the script throws and aborts — it will **not** force-close anything. Save and close all
+> workbooks, confirm no orphan process remains, then re-run.
 
 若只想同步 OUTSIDETEMP.xlsx、略過 VBA 練習檔：
 To sync only OUTSIDETEMP.xlsx and skip the VBA practice file:

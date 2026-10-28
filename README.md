@@ -66,8 +66,12 @@ If TVS's translation/commodity codes need attention, run separately:
 若當月 MAZ 有 PEN 幣別交易，需先補匯率缺口（見 SOP 第 5 節）：
 If this month's MAZ has PEN-currency rows, fill the rate gap first (see SOP §5):
 ```powershell
-.\Get-PenExchangeRate.ps1 -ReportMonth "2026-07"
+$ReportMonth = "2026-09"  # 每月改成 YYYY-MM / set to the reporting month
+.\Get-PenExchangeRate.ps1 -ReportMonth $ReportMonth
 ```
+
+若 UBC 匯率網站無法解析 DNS，腳本會停止且不改報表；確認網路/DNS/VPN 後重試。仍無法連線時，可用可信來源核對的 USD per 1 PEN 匯率、日期與來源以 `-UsdPerPen`、`-RateDate`、`-RateSource` 傳入。詳見 PowerShell-Commands.md。
+If DNS cannot resolve the UBC rate site, the script stops without changing the report. Check internet/DNS/VPN and retry; if it remains unavailable, pass a verified USD per 1 PEN quote, date and source using `-UsdPerPen`, `-RateDate` and `-RateSource`. See PowerShell-Commands.md.
 
 若需要產出外部交付檔案（把數值複製進 OUTSIDETEMP.xlsx 和 OUTSIDETEMP_VBA_PRACTICE.xlsm、延伸表格、重新整理樞紐分析表、另存當月交付檔）：
 If an outside-delivery deliverable is needed (value-copy into OUTSIDETEMP.xlsx and OUTSIDETEMP_VBA_PRACTICE.xlsm, extend the tables, refresh all PivotTables, Save-As the dated deliverable):
@@ -77,8 +81,8 @@ If an outside-delivery deliverable is needed (value-copy into OUTSIDETEMP.xlsx a
 > ⚠️ 這支腳本會直接改動 `OUTSIDETEMP.xlsx` 和 `OUTSIDETEMP_VBA_PRACTICE.xlsm`（累加資料、延伸表格），不是唯讀範本；執行前若偵測到任何 EXCEL.EXE 在跑會直接報錯中止（不強制關閉）。詳見 SOP 第 4 節步驟 8。
 > ⚠️ This script modifies `OUTSIDETEMP.xlsx` and `OUTSIDETEMP_VBA_PRACTICE.xlsm` directly (accumulates data, extends the tables) — not read-only templates; it throws and aborts if any EXCEL.EXE is detected running (does not force-close). See SOP §4 step 8 for details.
 >
-> 🔧 **已知問題，尚未修正（2026-09-23 發現）**：本腳本目前把來源欄數寫死為 36 欄（A:AJ）。自從 Data 分頁擴充到 39 欄（新增 `ProdFamiDesc`/`ProdFamiCode`/`ProdFamilyFittingsCode`，見下方 HTML 報表章節）之後，若對已經是 39 欄的 `OUTSIDETEMP` 檔案直接執行本腳本，`Table1.Resize()` 會把表格縮回 36 欄，導致新增的 3 個欄位脫離表格範圍、連帶弄壞依賴全部 39 欄的 Fittings 樞紐分析表。**執行前務必先確認來源與目的檔案目前的實際欄數是否一致**；2026-08 月結因為這個原因改成人工重新整理樞紐分析表 + 另存新檔，跳過本腳本。
-> 🔧 **Known issue, not yet fixed (found 2026-09-23)**: this script currently hardcodes the source column count as 36 (A:AJ). Since the Data tab grew to 39 columns (added `ProdFamiDesc`/`ProdFamiCode`/`ProdFamilyFittingsCode`, see the HTML report section below), running this script as-is against an already-39-column `OUTSIDETEMP` file will `Table1.Resize()` it back down to 36 columns, detaching those 3 new columns from the table and breaking the Fittings pivot (which depends on all 39). **Confirm the actual current column count on both the source and destination files before running it.** The August 2026 close worked around this by manually refreshing the pivots and Save-As'ing instead of running this script.
+> 🔧 **交付腳本核對狀態**：2026-10-27 修正 Publish-OutsideReport.ps1 的固定36欄限制，改由來源表頭判斷欄數；寫入前核對兩份目的檔的表頭與 Table 欄數，並在樞紐刷新失敗時中止該檔存檔。程式尚未重新執行；2026-08唯讀檢視發現兩份工作檔的樞紐來源/定義名稱不一致，修復並驗證前仍不可用於正式交付。
+> 🔧 **Outside-report script status**: On 2026-10-27, Publish-OutsideReport.ps1 was revised to derive column count from source headers, validate both destination headers/table widths before writing, and abort saving a workbook if pivot refresh fails. The revised script has not been rerun. An August 2026 read-only review found inconsistent pivot sources/defined names in the two working files; repair and verify them before using this script for a formal delivery.
 
 確認無誤後，用兩支獨立腳本通知/發布給相關同事（Gmail 草稿 + Slack 頻道貼文，詳見 SOP 第 9 節）：
 Once confirmed, notify/distribute to colleagues via two independent scripts (Gmail draft + Slack channel post, see SOP §9 for details):
@@ -127,8 +131,10 @@ Global Purchase Report Claude/
 - `MZQ`/`MIL`/`RACO`/`TVS`/`MAZ` 資料來源：廠商或財務部提供的累積檔（Jan–當月），腳本自動篩出當月資料。
 - `MAZ`：若某月尚未收到資料，腳本會自動略過該實體並印出警告，不會中斷整個執行。
 
-> ⚠️ **重要：專案裡有「兩個」`REPORT` 資料夾，用途不同（2026-09-23 釐清）**：根目錄的 `REPORT\` 存放 `Build-GlobalPurchaseReport.ps1` 產出的主報表；`Global Purchase Report RPA\REPORT\` 是**另一個獨立資料夾**，存放 `OUTSIDETEMP.xlsx`、`OUTSIDETEMP_VBA_PRACTICE.xlsm`、`Publish-OutsideReport.ps1` 另存的當月日期版交付檔，以及 `Generate-PurchaseReportHtml.ps1` 產出的 HTML 報表。**`Generate-PurchaseReportHtml.ps1`（及其 VBA 按鈕）只會從巢狀的這個資料夾裡，依檔名編碼的報表期間自動挑選「最新日期版交付檔」當來源** —— 完全不會去看根目錄的主報表或 `OUTSIDETEMP` 系列檔案本身。若某個月忘記執行 `Publish-OutsideReport.ps1`（或等效的手動另存新檔），即使主報表和 `OUTSIDETEMP` 都已經更新到當月，HTML 報表仍會停留在上個月，而且不會有任何錯誤訊息。
-> ⚠️ **Important: there are TWO separate `REPORT` folders with different purposes (clarified 2026-09-23)**: the root `REPORT\` holds `Build-GlobalPurchaseReport.ps1`'s master output; `Global Purchase Report RPA\REPORT\` is a **different folder** holding `OUTSIDETEMP.xlsx`, `OUTSIDETEMP_VBA_PRACTICE.xlsm`, the dated deliverables `Publish-OutsideReport.ps1` Save-As's, and the HTML reports `Generate-PurchaseReportHtml.ps1` produces. **`Generate-PurchaseReportHtml.ps1` (and its VBA button) auto-picks its source ONLY from that nested folder's newest dated-deliverable file (sorted by the reporting period encoded in the filename)** — it never looks at the root master report or the `OUTSIDETEMP` files directly. If a month's `Publish-OutsideReport.ps1` (or the manual Save-As equivalent) is forgotten, the HTML report silently stays stuck on the prior month even after the master report and `OUTSIDETEMP` are both fully updated — with no error thrown.
+> ⚠️ **重要：專案裡有兩個用途不同的 REPORT 資料夾。** 根目錄 REPORT 放主報表；Global Purchase Report RPA\REPORT 放 OUTSIDETEMP、日期版 Excel 交付檔及 HTML。HTML 產生器只讀巢狀資料夾中符合命名規則的日期版 Excel，按報表期間、檔名日期及 RV 版本排序，不讀根目錄報表或 OUTSIDETEMP。沒有當月日期版檔時，HTML 仍可能使用舊月份資料。
+> ⚠️ **There are two REPORT folders.** Root REPORT holds the master. Global Purchase Report RPA\REPORT holds OUTSIDETEMP, dated Excel deliverables and HTML. The HTML generator reads matching dated Excel files there and sorts by reporting period, filename date and revision. Ensure the deliverable is current before generating HTML.
+
+> **2026-10-27 saved-file check:** master and delivery Data sheets have 39 columns and 50,262 rows; August has 6,298. Master, dated Excel, VBA practice workbook and HTML contain Jan–Aug 2026. TEMP HTML matches the published snapshot byte for byte. Pivot refresh was not tested.
 
 ---
 
@@ -142,19 +148,19 @@ Global Purchase Report Claude/
 | 端對端測試 | ✅ 通過 |
 | 匯率表自動化 | ✅ 已完成（C:M 直接寫源頭值，O:Z 公式自動計算，不再靠複製上一列）|
 | Q2:AJ2 公式填入新增列 | ✅ 已自動化（一欄一欄依相依順序填公式、算完立刻凍結成數值）|
-| AA/AB（Max/Min PO Price） | ✅ 改用 PowerShell 分組計算，取代會隨資料量變慢的 MAXIFS/MINIFS |
+| AA/AB（Max/Min PO Price） | ✅ 2026-08-04起由承辦人複製母版公式並檢查；主腳本不計算此欄。Complete-FormulaColumns.ps1 於確認後填入依賴欄位。|
 | New Vendors 檢查分頁 | ✅ 已完成（自動彙整當月「NEW VENDOR」列）|
 | RACO/TVS 樣板存檔衝突 | ✅ 已修正（改用固定範本檔，不再自動抓最新快照）|
 | MIL 的 PART TYPE 欄位 | ✅ 已修正（數字 1-9 自動轉成 "B"，修好 AG 欄 #N/A 的問題）|
 | 稽核摘要工具 | ✅ 已完成（`New-ReportAuditSummary.ps1`）|
-| 外部交付檔案流程（OUTSIDETEMP → 當月交付檔） | ✅ 已完成（`Publish-OutsideReport.ps1`：數值複製、延伸 Table1、重新整理樞紐分析表、另存新檔，含自動遞增 RV 編號；2026-08-26 起同步擴充到 `OUTSIDETEMP_VBA_PRACTICE.xlsm`）|
-| MAZ 的 PEN 匯率缺口 | ✅ 已完成（`Get-PenExchangeRate.ps1`：抓 USD/PEN 換算成 HKD/PEN 寫入，2026-07 月結已實測使用成功）|
-| OUTSIDETEMP.xlsx 的 `data` 命名範圍已損壞 | ✅ 已修復（2026-08-25，人工手動重建：`data` 改指向 `=Table1[#All]`；3 個隱藏分頁共 18 個樞紐分析表已實測全部重新整理成功）|
-| OUTSIDETEMP_VBA_PRACTICE.xlsm 的 `data` 命名範圍損壞/缺失 | ✅ 已修復（2026-08-27，人工在名稱管理員新增 `data` 指向 `=Table1[#All]`；25個樞紐分析表已實測全部重新整理成功）|
+| 外部交付檔案流程（OUTSIDETEMP → 當月交付檔） | ⚠️ Publish-OutsideReport.ps1 已改為動態來源欄數並加上表頭/Table寬度及樞紐刷新失敗檢查；尚未重跑。先修復並驗證兩份工作檔的樞紐來源/定義名稱，再用腳本發布。|
+| MAZ 的 PEN 匯率缺口 | ✅ Get-PenExchangeRate.ps1 可補匯率；若建置時缺 PEN，另須在 Excel 重填/重算並凍結受影響列 Q:S，單純更新匯率表不會更新資料列。|
+| External workbook pivot sources | August dated workbook has data = #REF!; its pivot caches refer to Table1, 表格1 and data, while its Data table is named 表格1. VBA practice workbook has no data name; caches mix A1:AK/A1:AM. These saved records differ from earlier repair notes. Excel refresh was not tested; verify before use. |
+| VBA 練習檔定義名稱及樞紐快取 | 曾於2026-08人工修復，但2026-10唯讀檢視的檔案沒有 data 名稱且快取來源混用 A1:AK/A1:AM。Excel 刷新尚未重新驗證；詳見前項。|
 | 2026-07 月結 | ✅ 7個實體皆已用實際日期欄位驗證（非僅檔案時間戳記），主報表與交付檔均已產出 |
 | 每月通知/發布自動化 | ✅ 已完成（`New-MonthlyEmailDraft.ps1` Gmail草稿 + `New-MonthlySlackPost.ps1` Slack頻道貼文含HTML報表附件，2026-08-27 實測成功，見 SOP 第9節）|
-| Data 新增第 37-39 欄：ProdFamiDesc/ProdFamiCode/ProdFamilyFittingsCode（產品家族） | ✅ 2026-09-02 新增 `ProdFamiDesc`（37欄，VLOOKUP 自 MMS DATA）；後續擴充到 `ProdFamiCode`（38欄）與 `ProdFamilyFittingsCode`（39欄）。HTML 報表全流程（`Generate-PurchaseReportHtml.ps1`／`build_report.js`）本來就是動態抓欄位、不寫死欄數，實測可直接處理無需改程式；`Copy-ProdFamiDescToSource.ps1` 一次性工具負責把 OUTSIDETEMP.xlsx 算好的值核對列對齊後複製回正式月報來源檔。⚠️ 此三個欄位目前不含 **TVS 與 MAZ** 兩個實體的資料（來源自動化範圍尚未涵蓋，另行申請中）；⚠️ 欄數已從 36 擴充到 39，`Publish-OutsideReport.ps1` 尚未同步更新（見上方「怎麼用」章節的已知問題）|
-| 2026-08 月結完整跑完（2026-09-23） | ✅ 端到端完成：主報表合併（7實體）→ 人工填 AA/AB → `Complete-FormulaColumns.ps1` → 手動重新整理 `OUTSIDETEMP`/`OUTSIDETEMP_VBA_PRACTICE.xlsm` 樞紐分析表並另存 `(1-8)2026` 交付檔（因上述 36 欄問題跳過 `Publish-OutsideReport.ps1`）→ `Generate-PurchaseReportHtml.ps1 -Publish` → Gmail 草稿 + Slack 頻道貼文（已真的發布）。過程中意外發現「兩個 REPORT 資料夾」的架構陷阱（見上方資料夾結構章節）|
+| Product-family fields | August 2026 HTML has ProdFamiDesc in 347/454 MAZ rows and blank in all 3,274 TVS rows. The earlier note that all MAZ rows are blank is outdated. Other fields/months were not checked. Publish-OutsideReport.ps1 now derives source width dynamically; the revised publisher has not been rerun. |
+| August 2026 saved state | Master, dated delivery and HTML cover Jan–Aug: 50,262 total rows and 6,298 for August. TEMP HTML matches the 202608 snapshot. Excel pivot caches and defined names still need review. |
 | HTML 報表新增功能（2026-08-28～09-02；2026-09-09 更新） | ✅ Dashboard/GLID/Fittings/Data 新增 ProdFamiDesc 與 Part_MfgCat_Code 篩選；Dashboard 新增 SKU vs Part 家族分布圓餅圖（Top10+Other）；GLID/Fittings/Packaging/Coating 四頁明細表欄位可拖曳調整寬度（設定存在瀏覽器本機），且 2026-09-09 起預設欄寬會依使用者目前電腦/瀏覽器視窗可用寬度自動縮放，盡量讓四頁表格在同一畫面內看到全部欄位；Dashboard/GLID/Fittings/Packaging/Coating 的 ITEM_CODE/DB/Vendor 儲存格與 Dashboard 分類/供應商列都可點擊，直接跳到 Data 頁並套用篩選；KPI 卡片拆成 SKU/Part 兩區並各自顯示加權百分比；歡迎彈窗（intro modal）內容已更新並改用新版 localStorage 鍵值，舊使用者也會再看到一次 |
 | 第2列母版公式效能優化（2026-08） | ✅ 已完成，U/V/W/AA/AB/AG/AH 改有界範圍；修正 ITEM_CODE 前導零不一致造成的 AG/AH #N/A（用 `LET()` 正規化）；完整公式表見 SOP 第3.1節 |
 | AA/AB 改為全程人工處理（2026-08-04）| ✅ 已完成：`Build-GlobalPurchaseReport.ps1` 不再碰 AA/AB 及依賴欄位；新增 `Complete-FormulaColumns.ps1`，人工填好 AA/AB 後執行，自動檢查沒填會報錯中止，避免重演 key 不同步 #N/A 問題 |
@@ -190,8 +196,8 @@ With no parameters it defaults to a fixed working file, `FIN_Global_Purchase -Re
 **（實驗性）Excel 按鈕觸發**：`HTML_Report_Generator\HtmlUpdateModule.bas` 是一份可手動匯入 Excel VBA 的巨集範本，讓使用者能用工作表上的一個按鈕觸發本腳本，已在沙盒環境驗證可行（不影響使用者原本開著的 Excel）。要正式使用需要把承載按鈕的檔案另存成 `.xlsm`，且因每月報表檔名不同、巨集不會自動延續到下個月，加上公司巨集安全政策是否允許仍待確認——尚未正式部署，詳見 SOP 第 8 節。
 **(Experimental) Excel-button trigger**: `HTML_Report_Generator\HtmlUpdateModule.bas` is a manually-importable VBA macro that lets a worksheet button trigger this script — sandbox-verified as safe (doesn't conflict with the user's own open Excel session). Real use requires saving the host file as `.xlsm`, manually re-importing the macro each month (filenames change), and confirming your organization's macro-security policy allows it — not yet deployed for real use. See SOP §8 for details.
 
-**2026-08-28～09-02 新增功能；2026-09-09 更新**：點擊分類（Dashboard）或表格儲存格（ITEM_CODE/DB/Vendor）直接跳到 Data 頁並套用篩選；GLID/Fittings/Packaging/Coating 明細表欄寬可拖曳調整（設定存在瀏覽器 localStorage），預設欄寬會依使用者目前電腦/瀏覽器視窗可用寬度自動縮放，盡量讓四頁表格在同一畫面內看到全部欄位；若使用者手動拖曳欄寬，手動設定會保留，按「Reset column widths」會回到目前視窗大小的自動適配欄寬；新增 `ProdFamiDesc`（產品家族）與 `Part_MfgCat_Code` 篩選器；Dashboard 新增 SKU vs Part 家族分布圓餅圖（Top10+Other）與拆分成 SKU/Part 兩區、各自帶加權百分比的 KPI 卡片；歡迎彈窗內容已更新（新版 localStorage 鍵值，已關閉舊版提示的使用者也會再看到一次）。⚠️ **ProdFamiDesc 目前不含 TVS 與 MAZ 的資料**（來源自動化尚未涵蓋這兩個實體）。
-**New in 2026-08-28～09-02; updated 2026-09-09**: click a Dashboard category or a table cell (ITEM_CODE/DB/Vendor) to jump straight to the Data tab, pre-filtered; GLID/Fittings/Packaging/Coating tables have drag-to-resize columns (persisted in browser localStorage), and their default widths now auto-scale to the user's current computer/browser width so the four tables try to show all columns on one screen; if a user manually drags widths, those manual widths are preserved, while "Reset column widths" returns to the auto-fit widths for the current window size; new `ProdFamiDesc` (Product Family) and `Part_MfgCat_Code` filters; Dashboard gained SKU vs Part family breakdown pie charts (Top 10 + Other) and KPI cards split into SKU/Part sections each with a weighted %. Welcome popup content refreshed (new localStorage key, so viewers who dismissed the old one see it once more). ⚠️ **ProdFamiDesc currently excludes TVS and MAZ** (the source automation doesn't cover those two entities yet).
+⚠️ **Product Family coverage varies by month**: August 2026 HTML has no TVS ProdFamiDesc values (3,274 rows); 347/454 MAZ rows have values. Other fields and months were not checked.
+**New in 2026-08-28 to 09-02; updated 2026-09-09**: dashboard filters, family charts, drill-down links, resizable tables and weighted KPI cards. Check family coverage by month; August has no TVS ProdFamiDesc values and some MAZ values.
 
 **一次性資料修補工具**：`Copy-ProdFamiDescToSource.ps1` 把 `OUTSIDETEMP.xlsx` 裡已經算好的欄位數值（不是公式），逐列核對 PO_NO/VEND_INV_NO/ITEM_CODE/REC_QTY 對齊無誤後，複製進正式月報來源檔案——核對不通過會直接中止、不寫入任何資料。透過 `-ColumnName` 參數可重複用來搬移 `ProdFamiDesc`（預設）、`ProdFamiCode`、`ProdFamilyFittingsCode` 這三個欄位（不存在就新增一欄，已存在就覆寫數值）。
 **One-off data-patch tool**: `Copy-ProdFamiDescToSource.ps1` copies the already-computed values (not the formula) of a named column from `OUTSIDETEMP.xlsx` into the official monthly source file, only after verifying every row aligns by PO_NO/VEND_INV_NO/ITEM_CODE/REC_QTY — aborts before writing anything if any row doesn't match. The `-ColumnName` parameter lets it be reused for all three columns — `ProdFamiDesc` (default), `ProdFamiCode`, `ProdFamilyFittingsCode` — adding a new column if it doesn't exist yet, or overwriting values if it does.

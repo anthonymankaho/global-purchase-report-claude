@@ -126,10 +126,14 @@ function Sync-DataIntoWorkbook {
             throw "$label 表頭不一致，中止以避免資料錯位 / $label header mismatch at column $c ('$srcHdr' vs '$destHdr') - aborting to avoid misaligned data."
         }
     }
-    Write-Host "  表頭一致 (36 欄 A:AJ) / Header matches (36 cols A:AJ)"
+    Write-Host "  表頭一致 ($srcLastCol 欄) / Header matches ($srcLastCol columns)"
+
+    $table = $ws.ListObjects.Item(1)
+    if ($table.ListColumns.Count -ne $srcLastCol) {
+        throw "$label table has $($table.ListColumns.Count) columns but the source has $srcLastCol. No table resize or data write was performed; align and verify the destination schema/pivot sources first."
+    }
 
     Write-Host "  延伸 Table1 表格範圍... / Resizing Table1 table range..."
-    $table = $ws.ListObjects.Item(1)
     $oldRange = $table.Range.Address($false, $false)
     $newTableRange = $ws.Range($ws.Cells(1, 1), $ws.Cells($srcLastRow, $srcLastCol))
     $table.Resize($newTableRange)
@@ -137,15 +141,15 @@ function Sync-DataIntoWorkbook {
 
     # 注意：曾實測過，用大陣列一次覆寫含表頭列(第1列)的整個範圍會讓 Table1 物件損毀
     # (ListObjects.Count 變 0，所有樞紐分析表跟著失效)，即使表頭文字完全相同也一樣。
-    # 已用 A1:AJ$srcLastRow 全範圍寫入 vs. 只寫 A2:AJ$srcLastRow(跳過表頭列)兩種方式實測比對，
+    # 已用含表頭列全範圍寫入 vs. 只寫第2列起的資料兩種方式實測比對，
     # 只寫資料列的版本存檔、重新開啟後 Table1 都完整存活，因此固定只寫資料列。
     # NOTE: empirically tested - bulk-overwriting the FULL range (including header row 1) in one
     # array assignment destroys the Table1 ListObject (ListObjects.Count becomes 0, breaking every
     # PivotTable), even when the header text is identical to what's already there. Verified via a
-    # side-by-side test: full-range write vs. data-rows-only write (A2:AJ$srcLastRow, skipping the
+    # side-by-side test: full-range write vs. data-rows-only write (row 2 onward, skipping the
     # header) - only the data-rows-only version survives save/reopen with Table1 intact. Keep this
     # skip-header-row behavior; do not "simplify" back to a single full-range write.
-    Write-Host "  寫入數值到 Data 分頁 (A2:AJ$srcLastRow，跳過表頭列)... / Writing values into Data tab (A2:AJ$srcLastRow, header row skipped)..."
+    Write-Host "  寫入數值到 Data 分頁 (第2列起，共 $srcLastCol 欄，跳過表頭列)... / Writing values into Data tab (row 2 onward, $srcLastCol columns, header row skipped)..."
     $destRange = $ws.Range($ws.Cells(2, 1), $ws.Cells($srcLastRow, $srcLastCol))
     $destRange.Value2 = $dataOnlyValues
     Release-Com $destRange
@@ -164,7 +168,10 @@ function Sync-DataIntoWorkbook {
         }
     }
     Write-Host "  成功 / Succeeded ($($refreshed.Count)); 失敗 / Failed ($($failed.Count))"
-    if ($failed.Count -gt 0) { $failed | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow } }
+    if ($failed.Count -gt 0) {
+        $failed | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
+        throw "$label has $($failed.Count) PivotTable refresh failure(s); refusing to save or deliver a workbook with unverified pivot data."
+    }
 
     # PivotCharts 依附在各自的樞紐分析表上，RefreshTable() 後會自動同步更新，不需另外處理。
     # PivotCharts are bound to their PivotTable and update automatically once it refreshes - no
@@ -181,33 +188,36 @@ if ($existingExcel) {
     throw "偵測到 $($existingExcel.Count) 個正在執行的 EXCEL.EXE（可能是 OUTSIDETEMP 或練習檔已在您自己的視窗中開啟）。請先手動儲存並關閉所有 Excel 視窗，再重新執行本腳本 - 本腳本不會自動強制關閉，以免弄丟您未存檔的工作。`nDetected $($existingExcel.Count) running EXCEL.EXE process(es) - OUTSIDETEMP or the practice file may be open in your own window. Please save and close all Excel windows yourself, then re-run - this script will NOT force-close them, to avoid losing your unsaved work."
 }
 
-$excel = New-Object -ComObject Excel.Application
-$excel.Visible = $false
-$excel.DisplayAlerts = $false
-$excel.ScreenUpdating = $false
-# 手動計算模式：Table1.Resize()、寫入數萬列的值、每個 PivotTable.RefreshTable() 若在自動計算模式下，
-# 每一步都會觸發整個活頁簿（Dashboard/Analysis 分頁等仍是公式）重算一次，這正是這個專案之前遇過的
-# 「卡10分鐘以上」問題（Build-GlobalPurchaseReport.ps1 也用同樣方式防範）。改成手動後，只有
-# Sync-DataIntoWorkbook 最後那一次明確的 Application.Calculate() 才會真正重算，其餘中間步驟都不會。
-# Manual calculation mode: under Automatic, Table1.Resize(), writing tens of thousands of value rows,
-# and each PivotTable.RefreshTable() would each independently trigger a full-workbook recalculation
-# (Dashboard/Analysis tabs are still formulas) - the exact "10+ minute hang" pattern this project has
-# hit before (Build-GlobalPurchaseReport.ps1 guards against it the same way). With Manual, only the
-# single explicit Application.Calculate() at the end of Sync-DataIntoWorkbook actually recalculates;
-# none of the intermediate steps do.
-$excel.Calculation = -4135  # xlCalculationManual
-
+$excel = $null
 $srcWb = $null
 $destWb1 = $null
 $destWb2 = $null
 
 try {
+    $excel = New-Object -ComObject Excel.Application
+    $excel.Visible = $false
+    $excel.DisplayAlerts = $false
+    $excel.ScreenUpdating = $false
     # ---- 1) 讀來源資料（值，非公式）/ Read source data as VALUES ----
     Write-Host "`n[1/3] 讀取來源 Data 分頁... / Reading source Data tab..."
     $srcWb = $excel.Workbooks.Open($SourceReportPath, [Type]::Missing, $true)
+    # Excel may reject changing Application.Calculation with HRESULT 0x800A03EC
+    # on a fresh automation instance before any workbook is open. Open the source first.
+    # Manual mode avoids repeated full-workbook recalculation during table resize and pivot refresh;
+    # Sync-DataIntoWorkbook performs an explicit Calculate after the refresh.
+    $excel.Calculation = -4135  # xlCalculationManual
     $srcWs = $srcWb.Worksheets.Item("MHK+STC+MZQ+MIL+RACO Data")
     $srcLastRow = Get-TrueLastDataRow -ws $srcWs -col 1
-    $srcLastCol = 36  # A..AJ
+    if ($srcLastRow -lt 2) { throw "Source Data tab contains no data rows to publish." }
+    # Derive source width from the last nonblank header. A fixed 36-column limit
+    # could silently omit the newer family fields and resize destination tables too narrowly.
+    $srcLastCol = $srcWs.Cells(1, $srcWs.Columns.Count).End(-4159).Column  # xlToLeft
+    if ($srcLastCol -lt 1) { throw "No header row found in the source Data tab." }
+    for ($c = 1; $c -le $srcLastCol; $c++) {
+        if ([string]::IsNullOrWhiteSpace([string]$srcWs.Cells(1, $c).Value2)) {
+            throw "Source Data header row contains a blank header at column $c; refusing to publish misaligned fields."
+        }
+    }
     Write-Host "  來源總列數 / Source total rows: $srcLastRow (含表頭 incl. header)"
 
     # 表頭與資料列分開兩次讀取（不切割大陣列），供後面「只寫資料列」使用 / Read header and data rows
@@ -280,8 +290,10 @@ finally {
         try { $srcWb.Close($false) } catch {}
         Release-Com $srcWb
     }
-    $excel.Quit()
-    Release-Com $excel
+    if ($excel) {
+        try { $excel.Quit() } catch {}
+        Release-Com $excel
+    }
     [GC]::Collect()
     [GC]::WaitForPendingFinalizers()
 
