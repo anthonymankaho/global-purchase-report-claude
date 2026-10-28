@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#050810">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23050810'/%3E%3Ccircle cx='32' cy='32' r='20' fill='none' stroke='%2322d3ee' stroke-width='3'/%3E%3Cpath d='M12 32h40M32 12c8 8 8 32 0 40M32 12c-8 8-8 32 0 40' fill='none' stroke='%2322d3ee' stroke-width='3'/%3E%3C/svg%3E">
+<title>Global Purchase Command Center</title>
+<style>
+/* React 的挂载点不能占一层盒子：body 直接就是 flex / grid 容器，
+   中间多一个 <div id="root"> 会掐断 height:100% 的参照链，撑满视口的版面
+   会变成按内容无限长高（图表容器一长，ECharts 就画出十几屏那么高的图）。
+   display:contents 让它不生成盒子，版面保持 body 到 #stage 的直接父子关系。 */
+#root{display:contents}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="module" src="/src/main.tsx"></script>
+</body>
+</html>

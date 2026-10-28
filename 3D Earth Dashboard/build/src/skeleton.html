@@ -1,0 +1,114 @@
+<div class="app-shell">
+  <div class="ambient-grid" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand-mark" aria-hidden="true"><span data-icon="earth" data-size="24"></span></div>
+    <div class="brand-copy">
+      <span class="eyebrow" data-i18n="brandKicker">GLOBAL PURCHASE REPORT · 2026</span>
+      <h1 data-i18n="appTitle">全球採購報告</h1>
+    </div>
+    <div class="topbar-period"><span data-i18n="periodLabel">資料期間</span><strong id="period-label">—</strong></div>
+    <div class="connection" id="connection-pill"><i></i><span id="connection-text">內嵌資料載入中…</span></div>
+    <time class="clock" id="clock" datetime="">--:--:--<small id="clock-date"></small></time>
+    <button class="btn ai-btn" id="ai-btn" type="button"><span data-icon="sparkles" data-size="15"></span><span data-i18n="aiBtn">AI 助理</span></button>
+    <button class="btn lang-btn" id="lang-btn" type="button" aria-label="切換語言 / Toggle language">中文/ENG</button>
+    <button class="icon-btn" id="theme-btn" type="button" aria-label="切換淺色主題"></button>
+    <button class="btn primary create-btn" id="create-btn" type="button"><span data-icon="plus" data-size="16"></span><span data-i18n="addPurchase">新增採購</span></button>
+  </header>
+
+  <main id="main-root">
+    <section class="filterbar" aria-label="採購篩選">
+      <div class="filter-title"><span class="eyebrow">ANALYSIS SCOPE</span><strong data-i18n="analysisScope">分析範圍</strong></div>
+      <label><span data-i18n="fEntity">企業實體</span><select id="f-entity"></select></label>
+      <label><span data-i18n="fMonth">月份</span><select id="f-month"></select></label>
+      <label><span data-i18n="fComm">標準品類</span><select id="f-comm"></select></label>
+      <label><span data-i18n="fVendor">供應商</span><select id="f-vendor"></select></label>
+      <label><span data-i18n="fStatus">分析狀態</span><select id="f-status"></select></label>
+      <button class="btn reset-btn" id="reset-btn" type="button" disabled><span data-icon="rotate-ccw" data-size="15"></span><span id="reset-label">重設</span></button>
+    </section>
+
+    <section class="kpi-grid" id="kpi-grid" aria-label="採購關鍵指標"></section>
+
+    <div class="cockpit-grid">
+      <div class="left-rail">
+        <section class="panel entity-panel">
+          <header class="panel-head"><div><span class="eyebrow">ENTITY PERFORMANCE</span><h2 data-i18n="entityPanel">企業實體採購額</h2></div><span class="panel-hint" data-i18n="clickDrill">點擊下鑽</span></header>
+          <div class="rank-list" id="entity-list"></div>
+        </section>
+        <section class="panel category-panel">
+          <header class="panel-head"><div><span class="eyebrow">COMMODITY MIX</span><h2 data-i18n="categoryPanel">品類採購結構</h2></div><span class="panel-hint">USD</span></header>
+          <div class="chart category-chart" id="donut-chart"></div>
+        </section>
+      </div>
+
+      <div class="center-stage">
+        <section class="panel globe-panel">
+          <header class="panel-head globe-head"><div><span class="eyebrow">GLOBAL ENTITY NETWORK</span><h2 data-i18n="globePanel">全球採購實體網絡</h2></div>
+            <button class="tour-btn" id="tour-btn" type="button"></button>
+          </header>
+          <div class="globe-stage">
+            <div class="globe-fallback" id="globe-fallback"><span data-icon="earth" data-size="64"></span><span id="globe-status" data-i18n="globeBuilding">正在建立全球實體網絡…</span></div>
+            <div id="earth" aria-label="可旋轉的全球採購實體地球"></div>
+            <div class="hud-corners" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+            <div class="globe-readout"><span id="readout-label">網絡總覽</span><strong id="readout-entity">—</strong><b id="readout-value">—</b></div>
+            <span class="globe-help" data-i18n="globeHelp">拖曳旋轉 · 點擊節點篩選</span>
+          </div>
+          <footer class="globe-note" data-i18n="globeNote">節點地理位置為示意對照；採購金額與排行均來自內嵌的正式月報資料。</footer>
+        </section>
+        <section class="panel trend-panel">
+          <header class="panel-head"><div><span class="eyebrow">MONTHLY PROCUREMENT</span><h2 data-i18n="trendPanel">月度採購額與收貨數量</h2></div><span class="panel-hint" id="trend-hint">目前範圍</span></header>
+          <div class="chart trend-chart" id="trend-chart"></div>
+        </section>
+      </div>
+
+      <div class="right-rail">
+        <section class="panel supplier-panel">
+          <header class="panel-head"><div><span class="eyebrow">SUPPLIER CONCENTRATION</span><h2 data-i18n="supplierPanel">供應商採購排行</h2></div><span class="panel-hint" id="supplier-hint">TOP 8</span></header>
+          <div class="supplier-list" id="supplier-list"></div>
+        </section>
+        <section class="panel alerts-panel">
+          <header class="panel-head"><div><span class="eyebrow">PROCUREMENT SIGNALS</span><h2 data-i18n="signalsPanel">採購訊號</h2></div><span class="signal-count" id="signal-count"></span></header>
+          <div class="alert-list" id="alert-list"></div>
+          <footer class="alert-foot" data-i18n="signalsFoot">依目前篩選資料即時計算，非外部即時風險通知。</footer>
+        </section>
+      </div>
+    </div>
+
+    <section class="panel records-panel">
+      <header class="records-head">
+        <div><span class="eyebrow">PURCHASE ORDER DETAILS</span><h2><span data-i18n="poDetails">採購明細</span> <span id="records-count">—</span></h2></div>
+        <form class="search-form" id="search-form">
+          <span data-icon="search" data-size="15"></span>
+          <input type="search" id="search-input" data-i18n-placeholder="searchPh" placeholder="搜尋 PO、料號、品項或供應商" aria-label="搜尋採購明細" />
+          <button type="button" class="search-clear" id="search-clear" aria-label="清除搜尋" hidden></button>
+          <button class="btn" type="submit"><span data-i18n="searchBtn">搜尋</span></button>
+        </form>
+        <button class="btn export-btn" id="export-btn" type="button" disabled><span data-icon="download" data-size="15"></span><span id="export-label">匯出目前明細</span></button>
+      </header>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th><button type="button" data-sort="poRecDate"><span data-i18n="thDate">收貨日期</span><span class="sort-caret" data-caret="poRecDate"></span></button></th>
+            <th><button type="button" data-sort="poNo"><span data-i18n="thPo">採購單號</span><span class="sort-caret" data-caret="poNo"></span></button></th>
+            <th class="optional-col"><span data-i18n="thEntity">實體</span></th><th><span data-i18n="thVendor">供應商</span></th><th><span data-i18n="thItem">料號／品項</span></th><th class="optional-col"><span data-i18n="thComm">品類</span></th>
+            <th class="n"><button type="button" data-sort="quantity"><span data-i18n="thQty">數量</span><span class="sort-caret" data-caret="quantity"></span></button></th>
+            <th class="n"><button type="button" data-sort="totalUsd"><span data-i18n="thUsd">採購額 USD</span><span class="sort-caret" data-caret="totalUsd"></span></button></th><th><span data-i18n="thStatus">狀態</span></th><th><span class="sr-only">操作</span></th>
+          </tr></thead>
+          <tbody id="records-tbody"></tbody>
+        </table>
+        <div class="table-state" id="table-empty" hidden><span data-icon="package-search" data-size="24"></span><strong data-i18n="noRows">沒有符合條件的明細</strong><button class="btn" type="button" id="table-reset" data-i18n="clearFilters">清除所有篩選</button></div>
+      </div>
+      <footer class="records-footer"><span id="pager-label">第 1 / 1 頁 · 每頁 12 筆</span><div><button class="btn" id="page-prev" type="button" disabled><span data-icon="chevron-left" data-size="15"></span><span data-i18n="prevPage">上一頁</span></button><button class="btn" id="page-next" type="button" disabled><span data-i18n="nextPage">下一頁</span><span data-icon="chevron-right" data-size="15"></span></button></div></footer>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <span>GLOBAL PURCHASE REPORT · SELF-CONTAINED HTML (NO SERVER)</span>
+    <span><span data-i18n="dataSource">資料來源</span>:FIN Global Purchase Report · <span id="footer-period">—</span> · <span data-i18n="localEdits">本機修訂</span>:<span id="footer-edits">0</span> <span data-i18n="editsUnit">筆</span><button class="btn" id="edits-reset" type="button" hidden style="margin-left:8px" data-i18n="clearEdits">清除本機修訂</button></span>
+  </footer>
+
+  <div id="create-root"></div>
+  <div id="drawer-root"></div>
+  <div id="ai-root"></div>
+  <div id="toast-root"></div>
+</div>

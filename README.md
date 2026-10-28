@@ -122,6 +122,7 @@ Global Purchase Report Claude/
 ├── SOP-Quick-Guide.md                                  ← SOP 精簡版重點摘要 + 逐步指令表
 ├── Global Purchase Report RPA/                         ← 舊 RPA 專案複本 + 對外交付流程的實際工作區（見下方 ⚠️ 說明，並非單純唯讀參考）
 │   └── REPORT/                                         ← OUTSIDETEMP.xlsx、OUTSIDETEMP_VBA_PRACTICE.xlsm、每月日期版交付檔、HTML 報表都存在這裡
+├── 3D Earth Dashboard/                                 ← （2026-10-29 新增）單一自包含 HTML 的「全球採購戰情室」3D 大螢幕看板＋build/ 重建原料，見該資料夾 README
 ├── Exchange Rate/                                      ← 每月放 STANDARD EXCHANGE RATE.xls[x]（人工取得，腳本自動讀取）
 ├── MHK/ STC/ MZQ/ MIL/ RACO/ TVS/ MAZ/                  ← 各實體當月原始資料（人工放入）+ 腳本產出的月份快照
 └── REPORT/                                             ← 根目錄，Build-GlobalPurchaseReport.ps1 產出的每月主報表（與上面的巢狀 REPORT/ 是兩個不同資料夾，見下方說明）
@@ -165,6 +166,7 @@ Global Purchase Report Claude/
 | 第2列母版公式效能優化（2026-08） | ✅ 已完成，U/V/W/AA/AB/AG/AH 改有界範圍；修正 ITEM_CODE 前導零不一致造成的 AG/AH #N/A（用 `LET()` 正規化）；完整公式表見 SOP 第3.1節 |
 | AA/AB 改為全程人工處理（2026-08-04）| ✅ 已完成：`Build-GlobalPurchaseReport.ps1` 不再碰 AA/AB 及依賴欄位；新增 `Complete-FormulaColumns.ps1`，人工填好 AA/AB 後執行，自動檢查沒填會報錯中止，避免重演 key 不同步 #N/A 問題 |
 | 月初資料索取自動化（2026-09-08） | ✅ 已完成：`New-InterGroupPurchaseDataRequestDrafts.ps1`，向 MZQ/MIL/RACO/TVS/MAZ 建立 5 封多語言 Gmail 草稿索取當月採購資料，`-ReportMonth` 自動往前推一個月 |
+| 3D 地球儀互動看板（2026-10-29；2026-10-29 改名，去除「戰情室」字樣，正式名稱「全球採購報告 / Global Purchase Report」） | ✅ 已完成並端對端驗證：`3D Earth Dashboard\Global_Purchase_3D_WarRoom_TEMP.html`（約 14.4 MB 單一自包含 HTML，three.js 3D 地球＋KPI＋實體/品類/供應商下鑽＋明細/CSV＋**「中文/ENG」整屏語言切換**）。內嵌 2026-01～09 共 56,370 列，已與主報表獨立驗算對帳一致（$159.80M、6 月 6,816 列、8 月 6,298 列全對）。由 AI app-builder 的 React+MySQL 模板移植而來，無需安裝任何東西；狀態修訂僅存瀏覽器 localStorage，不回寫 Excel。語言偏好存 localStorage，`?lang=en`/`?lang=zh` 可直啟對應語言（也供無頭驗證）。每月重建方式見 `3D Earth Dashboard\README.md`；3D 地球技術已沉澱為個人 skill `globe-engine`（已推送 GitHub Skills + MyVault 個人 OS）。2026-10-30 加「AI 助理」面板（依 skill `qwen-assistant-static-html`）：僅連本機 127.0.0.1:8765 共用 MPL 的 Qwen 中繼、HTML 內零憑證、只送彙總不送明細、AI 建議篩選需人工按「套用」、同事沒開中繼時面板自動顯示離線；詳見該資料夾 README |
 
 ---
 
