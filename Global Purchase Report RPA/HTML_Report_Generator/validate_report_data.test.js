@@ -1,0 +1,18 @@
+'use strict';
+const assert = require('node:assert/strict');
+const { validate } = require('./validate_report_data');
+const base = {header:['DB','PO_REC_DATE'],rows:[['MHK','2026-09-15'],['STC','2026-08-15']]};
+let result = validate(base,'2026-09');
+assert.equal(result.ok,true);
+assert.equal(result.summary.currentPeriodRows,1);
+assert.equal(result.summary.otherPeriodRows,1);
+result = validate(base,'2026-10');
+assert.equal(result.ok,false);
+assert.match(result.errors.join(' '),/No rows found/);
+result = validate({header:base.header,rows:[['MHK']]},'2026-09');
+assert.equal(result.ok,false);
+assert.match(result.errors.join(' '),/width mismatch/);
+result = validate({header:['DB','PO_REC_DATE'],rows:[['MHK','2026-02-30']]},'2026-02');
+assert.equal(result.summary.invalidDates,1);
+assert.equal(result.ok,false);
+console.log('All report quality-gate tests passed.');
