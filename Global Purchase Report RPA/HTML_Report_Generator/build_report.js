@@ -73,19 +73,19 @@ function buildDataTablesHtml(header, rows, title, scrollX, decimalCols, filterCo
 <title>${title}</title>
 <style>${dataTablesCss}
 :root {
-  --bg: #f4f6f9; --card-bg: #ffffff; --text: #222222; --text-muted: #666666;
-  --accent: #005daa; --border: #cccccc; --border-light: #eeeeee; --shadow: rgba(0,0,0,0.1);
-  --input-bg: #ffffff; --hover-bg: #f5f5f5;
+  --bg: #f5f6f7; --card-bg: #ffffff; --text: #1a1a1a; --text-muted: #575757;
+  --accent: #2251ff; --navy: #051c2c; --border: #d0d5dd; --border-light: #e6e9ed; --shadow: rgba(5,28,44,0.08);
+  --input-bg: #ffffff; --hover-bg: #f0f4f9;
 }
 body[data-theme="dark"] {
-  --bg: #1a1d23; --card-bg: #262a33; --text: #e4e6eb; --text-muted: #a0a4ab;
-  --accent: #6fa8ff; --border: #444a57; --border-light: #333844; --shadow: rgba(0,0,0,0.4);
-  --input-bg: #1f232b; --hover-bg: #2f3440;
+  --bg: #0e141b; --card-bg: #16202b; --text: #e8eaed; --text-muted: #9aa5b1;
+  --accent: #6f9bff; --navy: #dce6f2; --border: #33414f; --border-light: #26313d; --shadow: rgba(0,0,0,0.4);
+  --input-bg: #101820; --hover-bg: #1e2a37;
 }
-body { font-family: Calibri, Arial, sans-serif; font-size: 12px; margin: 8px; background: var(--bg); color: var(--text); }
+body { font-family: Arial, Helvetica, sans-serif; font-size: 12px; margin: 8px; background: var(--bg); color: var(--text); }
 table.dataTable { color: var(--text); }
 th, td { white-space: nowrap; }
-.summary-bar { margin-bottom: 8px; font-weight: bold; color: var(--accent); }
+.summary-bar { margin-bottom: 8px; font-weight: bold; color: var(--navy); font-family: Georgia, 'Times New Roman', serif; font-size: 13px; }
 .toolbar { margin-bottom: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 #exportBtn, #clearFiltersBtn { padding: 6px 14px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); }
 .filter-group { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); }
@@ -397,16 +397,16 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
 <title>${pageName}</title>
 <style>${dataTablesCss}
   :root {
-    --bg: #f4f6f9; --card-bg: #ffffff; --text: #222222; --text-muted: #666666;
-    --accent: #005daa; --border: #cccccc; --border-light: #eeeeee; --shadow: rgba(0,0,0,0.1);
-    --input-bg: #ffffff; --hover-bg: #f5f5f5;
+    --bg: #f5f6f7; --card-bg: #ffffff; --text: #1a1a1a; --text-muted: #575757;
+    --accent: #2251ff; --navy: #051c2c; --border: #d0d5dd; --border-light: #e6e9ed; --shadow: rgba(5,28,44,0.08);
+    --input-bg: #ffffff; --hover-bg: #f0f4f9;
   }
   body[data-theme="dark"] {
-    --bg: #1a1d23; --card-bg: #262a33; --text: #e4e6eb; --text-muted: #a0a4ab;
-    --accent: #6fa8ff; --border: #444a57; --border-light: #333844; --shadow: rgba(0,0,0,0.4);
-    --input-bg: #1f232b; --hover-bg: #2f3440;
+    --bg: #0e141b; --card-bg: #16202b; --text: #e8eaed; --text-muted: #9aa5b1;
+    --accent: #6f9bff; --navy: #dce6f2; --border: #33414f; --border-light: #26313d; --shadow: rgba(0,0,0,0.4);
+    --input-bg: #101820; --hover-bg: #1e2a37;
   }
-  body { font-family: Calibri, Arial, sans-serif; font-size: 11px; margin: 8px; background: var(--bg); color: var(--text); }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; margin: 8px; background: var(--bg); color: var(--text); }
   a.drill-link { color: var(--text); text-decoration: none; cursor: pointer; }
   a.drill-link:hover { text-decoration: underline; }
   /* Columns are user-resizable (drag the handle on a header's right edge) via
@@ -427,16 +427,16 @@ function buildPivotPageHtml(pageName, stdCommLabel, itemRows, dbValues, monthVal
   .col-resize-handle { position: absolute; right: 0; top: 0; bottom: 0; width: 8px; cursor: col-resize; user-select: none; z-index: 5; }
   .col-resize-handle:hover, .col-resize-handle.resizing { background: var(--accent); opacity: 0.5; }
   #resetColWidthsBtn { padding: 6px 14px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); }
-  h3 { color: var(--accent); margin: 0 0 8px 0; font-size: 14px; }
+  h3 { color: var(--navy); margin: 0 0 8px 0; font-size: 14px; font-family: Georgia, 'Times New Roman', serif; }
   .page-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
   #themeToggle { padding: 6px 14px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-size: 12px; }
-  .summary-bar { margin-bottom: 8px; font-weight: bold; color: var(--accent); font-size: 13px; }
-  .filters { display: flex; gap: 16px; flex-wrap: wrap; background: var(--card-bg); padding: 10px; border-radius: 6px; margin-bottom: 12px; box-shadow: 0 1px 3px var(--shadow); }
+  .summary-bar { margin-bottom: 8px; font-weight: bold; color: var(--navy); font-size: 13px; font-family: Georgia, 'Times New Roman', serif; }
+  .filters { display: flex; gap: 16px; flex-wrap: wrap; background: var(--card-bg); padding: 10px; border: 1px solid var(--border-light); border-radius: 2px; margin-bottom: 12px; }
   .filters label.fl { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
   .charts { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
-  .chart-box { background: var(--card-bg); padding: 12px; border-radius: 6px; box-shadow: 0 1px 3px var(--shadow); flex: 1; min-width: 420px; }
+  .chart-box { background: var(--card-bg); padding: 12px; border: 1px solid var(--border-light); border-radius: 2px; flex: 1; min-width: 420px; }
   canvas { max-height: 300px; }
-  .table-box { background: var(--card-bg); padding: 12px; border-radius: 6px; box-shadow: 0 1px 3px var(--shadow); }
+  .table-box { background: var(--card-bg); padding: 12px; border: 1px solid var(--border-light); border-radius: 2px; }
   table.dataTable { color: var(--text); }
   th, td { white-space: nowrap; }
   #exportBtn, #resetBtn { padding: 6px 14px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); }
@@ -520,7 +520,7 @@ var PRODFAMI_VALUES = ${prodFamiValuesJsonStr};
 var PRODFAMICODE_VALUES = ${prodFamiCodeValuesJsonStr};
 var PRODFAMILYFITTINGSCODE_VALUES = ${prodFamilyFittingsCodeValuesJsonStr};
 var HEADER = ${headerJsonStr};
-var DB_COLORS = ['#005daa', '#c0392b', '#27ae60', '#e67e22', '#8e44ad', '#16a085', '#d35400', '#7f8c8d'];
+var DB_COLORS = ['#2251ff', '#051c2c', '#00a9f4', '#5b6b7c', '#afc3ff', '#2e86ab', '#9aa5b1', '#62b5e5'];
 // Fixed DB -> color mapping (by full DB_VALUES list, not by whatever subset happens
 // to be present after filtering) so the same DB always gets the same color across
 // the bar chart, the pie chart, and between filter changes.
@@ -889,6 +889,7 @@ function applyTheme(theme) {
   document.body.setAttribute('data-theme', theme);
   Chart.defaults.color = theme === 'dark' ? '#c8ccd4' : '#333333';
   Chart.defaults.borderColor = theme === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
+  Chart.defaults.font.family = "Arial, Helvetica, sans-serif";
 }
 
 // Column widths are user-resizable (drag the handle on a header's right edge).
@@ -1231,33 +1232,41 @@ const dashboardHtml = `<!doctype html>
 <title>Dashboard</title>
 <style>${dataTablesCss}
   :root {
-    --bg: #f4f6f9; --card-bg: #ffffff; --text: #222222; --text-muted: #666666;
-    --accent: #005daa; --border: #cccccc; --border-light: #eeeeee; --shadow: rgba(0,0,0,0.1);
-    --input-bg: #ffffff; --hover-bg: #f5f5f5;
+    --bg: #f5f6f7; --card-bg: #ffffff; --text: #1a1a1a; --text-muted: #575757;
+    --accent: #2251ff; --navy: #051c2c; --border: #d0d5dd; --border-light: #e6e9ed; --shadow: rgba(5,28,44,0.08);
+    --input-bg: #ffffff; --hover-bg: #f0f4f9;
   }
   body[data-theme="dark"] {
-    --bg: #1a1d23; --card-bg: #262a33; --text: #e4e6eb; --text-muted: #a0a4ab;
-    --accent: #6fa8ff; --border: #444a57; --border-light: #333844; --shadow: rgba(0,0,0,0.4);
-    --input-bg: #1f232b; --hover-bg: #2f3440;
+    --bg: #0e141b; --card-bg: #16202b; --text: #e8eaed; --text-muted: #9aa5b1;
+    --accent: #6f9bff; --navy: #dce6f2; --border: #33414f; --border-light: #26313d; --shadow: rgba(0,0,0,0.4);
+    --input-bg: #101820; --hover-bg: #1e2a37;
   }
-  body { font-family: Calibri, Arial, sans-serif; margin: 12px; background: var(--bg); color: var(--text); }
+  body { font-family: Arial, Helvetica, sans-serif; margin: 12px; background: var(--bg); color: var(--text); }
   a.drill-link { color: var(--text); text-decoration: none; cursor: pointer; }
   a.drill-link:hover { text-decoration: underline; }
-  h2 { color: var(--accent); margin-top: 0; }
-  h3 { color: var(--accent); margin: 0 0 8px 0; font-size: 14px; }
+  h2 { color: var(--navy); margin-top: 0; font-family: Georgia, 'Times New Roman', serif; }
+  h3 { color: var(--navy); margin: 0 0 8px 0; font-size: 14px; font-family: Georgia, 'Times New Roman', serif; }
   .page-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   #themeToggle { padding: 6px 14px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--card-bg); color: var(--text); font-size: 12px; }
-  .filters { display: flex; gap: 16px; flex-wrap: wrap; background: var(--card-bg); padding: 12px; border-radius: 6px; margin-bottom: 16px; box-shadow: 0 1px 3px var(--shadow); }
-  .filters label.fl { display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+  .filters { display: flex; gap: 16px; flex-wrap: wrap; background: var(--card-bg); padding: 12px; border: 1px solid var(--border-light); border-radius: 2px; margin-bottom: 16px; }
+  .filters label.fl { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 4px; }
   .kpis { display: flex; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
-  .kpi { background: var(--card-bg); padding: 16px 24px; border-radius: 6px; box-shadow: 0 1px 3px var(--shadow); flex: 1; min-width: 180px; }
-  .kpi .label { font-size: 12px; color: var(--text-muted); }
-  .kpi .value { font-size: 24px; font-weight: bold; color: var(--accent); }
-  .kpi .weighted-pct { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .kpi { background: var(--card-bg); padding: 14px 20px 12px; border-top: 3px solid var(--navy); border-radius: 0 0 2px 2px; flex: 1; min-width: 180px; }
+  .kpi .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+  .kpi .value { font-size: 26px; font-weight: bold; color: var(--navy); margin-top: 2px; }
+  .kpi-sub { display: flex; gap: 10px; align-items: baseline; margin-top: 2px; }
+  .kpi .weighted-pct { font-size: 11px; color: var(--text-muted); }
+  .kpi .delta { font-size: 11px; font-weight: bold; }
+  .kpi .delta.up { color: #0a7a3d; }
+  .kpi .delta.down { color: #c0392b; }
+  body[data-theme="dark"] .kpi .delta.up { color: #4ade80; }
+  body[data-theme="dark"] .kpi .delta.down { color: #f87171; }
+  .action-title { font-family: Georgia, 'Times New Roman', serif; font-size: 15px; font-weight: bold; color: var(--navy); margin: 0 0 2px; }
+  .action-sub { font-size: 11px; color: var(--text-muted); margin: 0 0 8px; }
   .charts { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 16px; }
-  .chart-box { background: var(--card-bg); padding: 12px; border-radius: 6px; box-shadow: 0 1px 3px var(--shadow); flex: 1; min-width: 420px; }
+  .chart-box { background: var(--card-bg); padding: 12px; border: 1px solid var(--border-light); border-radius: 2px; flex: 1; min-width: 420px; }
   .chart-box.wide { flex-basis: 100%; }
-  .table-box { background: var(--card-bg); padding: 12px; border-radius: 6px; box-shadow: 0 1px 3px var(--shadow); }
+  .table-box { background: var(--card-bg); padding: 12px; border: 1px solid var(--border-light); border-radius: 2px; }
   canvas { max-height: 320px; }
   #resetBtn { padding: 6px 14px; cursor: pointer; border-radius: 4px; border: 1px solid var(--border); background: var(--input-bg); color: var(--text); }
   .drilldown-links { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 6px; }
@@ -1310,25 +1319,27 @@ const dashboardHtml = `<!doctype html>
 </div>
 <h3 style="margin-bottom:6px;">SKU (SKU-)</h3>
 <div class="kpis">
-  <div class="kpi"><div class="label">Total Purchase (USD)</div><div class="value" id="kpi-total-sku">-</div><div class="weighted-pct" id="kpi-total-sku-pct"></div></div>
-  <div class="kpi"><div class="label">Total Orders (Count)</div><div class="value" id="kpi-orders-sku">-</div><div class="weighted-pct" id="kpi-orders-sku-pct"></div></div>
-  <div class="kpi"><div class="label">Total Quantity</div><div class="value" id="kpi-qty-sku">-</div><div class="weighted-pct" id="kpi-qty-sku-pct"></div></div>
-  <div class="kpi"><div class="label">Vendor Rows (Count)</div><div class="value" id="kpi-vendors-sku">-</div><div class="weighted-pct" id="kpi-vendors-sku-pct"></div></div>
+  <div class="kpi"><div class="label">Total Purchase (USD)</div><div class="value" id="kpi-total-sku">-</div><div class="kpi-sub"><span class="delta" id="kpi-total-sku-delta"></span><span class="weighted-pct" id="kpi-total-sku-pct"></span></div></div>
+  <div class="kpi"><div class="label">Total Orders (Count)</div><div class="value" id="kpi-orders-sku">-</div><div class="kpi-sub"><span class="delta" id="kpi-orders-sku-delta"></span><span class="weighted-pct" id="kpi-orders-sku-pct"></span></div></div>
+  <div class="kpi"><div class="label">Total Quantity</div><div class="value" id="kpi-qty-sku">-</div><div class="kpi-sub"><span class="delta" id="kpi-qty-sku-delta"></span><span class="weighted-pct" id="kpi-qty-sku-pct"></span></div></div>
+  <div class="kpi"><div class="label">Active Vendors (Distinct)</div><div class="value" id="kpi-vendors-sku">-</div><div class="kpi-sub"><span class="delta" id="kpi-vendors-sku-delta"></span><span class="weighted-pct" id="kpi-vendors-sku-pct"></span></div></div>
 </div>
 <h3 style="margin-bottom:6px;">Part (Other Comm)</h3>
 <div class="kpis">
-  <div class="kpi"><div class="label">Total Purchase (USD)</div><div class="value" id="kpi-total-part">-</div><div class="weighted-pct" id="kpi-total-part-pct"></div></div>
-  <div class="kpi"><div class="label">Total Orders (Count)</div><div class="value" id="kpi-orders-part">-</div><div class="weighted-pct" id="kpi-orders-part-pct"></div></div>
-  <div class="kpi"><div class="label">Total Quantity</div><div class="value" id="kpi-qty-part">-</div><div class="weighted-pct" id="kpi-qty-part-pct"></div></div>
-  <div class="kpi"><div class="label">Vendor Rows (Count)</div><div class="value" id="kpi-vendors-part">-</div><div class="weighted-pct" id="kpi-vendors-part-pct"></div></div>
+  <div class="kpi"><div class="label">Total Purchase (USD)</div><div class="value" id="kpi-total-part">-</div><div class="kpi-sub"><span class="delta" id="kpi-total-part-delta"></span><span class="weighted-pct" id="kpi-total-part-pct"></span></div></div>
+  <div class="kpi"><div class="label">Total Orders (Count)</div><div class="value" id="kpi-orders-part">-</div><div class="kpi-sub"><span class="delta" id="kpi-orders-part-delta"></span><span class="weighted-pct" id="kpi-orders-part-pct"></span></div></div>
+  <div class="kpi"><div class="label">Total Quantity</div><div class="value" id="kpi-qty-part">-</div><div class="kpi-sub"><span class="delta" id="kpi-qty-part-delta"></span><span class="weighted-pct" id="kpi-qty-part-pct"></span></div></div>
+  <div class="kpi"><div class="label">Active Vendors (Distinct)</div><div class="value" id="kpi-vendors-part">-</div><div class="kpi-sub"><span class="delta" id="kpi-vendors-part-delta"></span><span class="weighted-pct" id="kpi-vendors-part-pct"></span></div></div>
 </div>
 <div class="charts">
-  <div class="chart-box" style="flex:2; min-width:560px;"><canvas id="chartDB"></canvas></div>
-  <div class="chart-box" style="flex:1; min-width:340px;"><canvas id="chartDBPie"></canvas></div>
+  <div class="chart-box" style="flex:2; min-width:560px;"><p class="action-title" id="at-db"></p><p class="action-sub">Total purchase by entity, stacked by month</p><canvas id="chartDB"></canvas></div>
+  <div class="chart-box" style="flex:1; min-width:340px;"><p class="action-title" id="at-dbpie"></p><p class="action-sub">Share of total spend (filtered)</p><canvas id="chartDBPie"></canvas></div>
 </div>
 <div class="charts">
-  <div class="chart-box"><canvas id="chartTimeline"></canvas></div>
+  <div class="chart-box"><p class="action-title" id="at-timeline"></p><p class="action-sub">Monthly trend, stacked by entity</p><canvas id="chartTimeline"></canvas></div>
   <div class="chart-box">
+    <p class="action-title" id="at-stdcomm"></p>
+    <p class="action-sub">Spend by commodity group</p>
     <canvas id="chartStdComm"></canvas>
     <div class="drilldown-links" id="stdCommDrilldown">
       View in Data page / 前往資料頁面篩選:
@@ -1578,42 +1589,70 @@ function stdCommGroup(sc) {
 
 function render() {
   var rows = getFiltered();
-  var totalLineColor = document.body.getAttribute('data-theme') === 'dark' ? '#f0f0f0' : '#222';
+  var isDark = document.body.getAttribute('data-theme') === 'dark';
+  var totalLineColor = isDark ? '#dce6f2' : '#051c2c';
+  // Compact $ format for action titles: $12.3M / $450K.
+  function fmtUsd(v) {
+    var a = Math.abs(v);
+    if (a >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
+    if (a >= 1e3) return '$' + (v / 1e3).toFixed(0) + 'K';
+    return '$' + a.toFixed(0);
+  }
 
   // KPIs are split into SKU (SKU-) vs Part (every other Std Comm) sections,
   // matching the same split already used for the two family pie charts below.
   // Each card also shows a Weighted % - that section's share of the SKU+Part
   // combined total for that specific metric (not a share of the grand total
-  // across all 4 metrics, which wouldn't mean anything).
+  // across all 4 metrics, which wouldn't mean anything) - and a delta vs the
+  // month before the latest month currently included in the filter.
   var skuRowsForKpi = rows.filter(function (r) { return r[2] === 'SKU-'; });
   var partRowsForKpi = rows.filter(function (r) { return r[2] !== 'SKU-'; });
   function sumMetrics(rowsIn) {
-    var usd = 0, qty = 0;
-    rowsIn.forEach(function (r) { usd += (r[4] || 0); qty += (r[5] || 0); });
-    return { usd: usd, qty: qty, count: rowsIn.length };
+    var usd = 0, qty = 0, vendors = {};
+    rowsIn.forEach(function (r) {
+      usd += (r[4] || 0); qty += (r[5] || 0);
+      var v = r[7] || r[8]; // VENDOR_ID, falling back to Std Vendor Name
+      if (v !== null && v !== undefined && v !== '') vendors[String(v)] = 1;
+    });
+    return { usd: usd, qty: qty, count: rowsIn.length, vendors: Object.keys(vendors).length };
   }
   var skuMetrics = sumMetrics(skuRowsForKpi);
   var partMetrics = sumMetrics(partRowsForKpi);
-  var combinedMetrics = {
-    usd: skuMetrics.usd + partMetrics.usd,
-    qty: skuMetrics.qty + partMetrics.qty,
-    count: skuMetrics.count + partMetrics.count
-  };
+  var combinedMetrics = sumMetrics(rows);
   function pctText(v, total) {
     return '(' + (total ? (v / total * 100).toFixed(1) : '0.0') + '% weighted)';
   }
-  function fillKpis(suffix, m) {
-    document.getElementById('kpi-total-' + suffix).textContent = m.usd.toLocaleString(undefined, { maximumFractionDigits: 0 });
+  // Delta baseline: the month before the latest month present in the current
+  // filter, so the arrow reads "latest month vs its prior month". No delta
+  // shown when the filter only includes one month (or nothing).
+  var monthsSorted = Array.from(new Set(rows.map(function (r) { return r[1]; }))).filter(Boolean).sort();
+  var prevMonthLabel = monthsSorted.length > 1 ? monthsSorted[monthsSorted.length - 2] : null;
+  function setDelta(el, cur, prev) {
+    if (!el) return;
+    if (!prevMonthLabel || !prev) { el.textContent = ''; el.className = 'delta'; return; }
+    var pct = prev ? (cur - prev) / prev * 100 : 0;
+    var up = pct >= 0;
+    el.textContent = (up ? '\u25B2 ' : '\u25BC ') + Math.abs(pct).toFixed(1) + '% vs ' + prevMonthLabel;
+    el.className = 'delta ' + (up ? 'up' : 'down');
+  }
+  function fillKpis(suffix, m, pm) {
+    document.getElementById('kpi-total-' + suffix).textContent = '$' + m.usd.toLocaleString(undefined, { maximumFractionDigits: 0 });
     document.getElementById('kpi-total-' + suffix + '-pct').textContent = pctText(m.usd, combinedMetrics.usd);
+    setDelta(document.getElementById('kpi-total-' + suffix + '-delta'), m.usd, pm && pm.usd);
     document.getElementById('kpi-orders-' + suffix).textContent = m.count.toLocaleString();
     document.getElementById('kpi-orders-' + suffix + '-pct').textContent = pctText(m.count, combinedMetrics.count);
+    setDelta(document.getElementById('kpi-orders-' + suffix + '-delta'), m.count, pm && pm.count);
     document.getElementById('kpi-qty-' + suffix).textContent = m.qty.toLocaleString(undefined, { maximumFractionDigits: 0 });
     document.getElementById('kpi-qty-' + suffix + '-pct').textContent = pctText(m.qty, combinedMetrics.qty);
-    document.getElementById('kpi-vendors-' + suffix).textContent = m.count.toLocaleString();
-    document.getElementById('kpi-vendors-' + suffix + '-pct').textContent = pctText(m.count, combinedMetrics.count);
+    setDelta(document.getElementById('kpi-qty-' + suffix + '-delta'), m.qty, pm && pm.qty);
+    document.getElementById('kpi-vendors-' + suffix).textContent = m.vendors.toLocaleString();
+    document.getElementById('kpi-vendors-' + suffix + '-pct').textContent = pctText(m.vendors, combinedMetrics.vendors);
+    setDelta(document.getElementById('kpi-vendors-' + suffix + '-delta'), m.vendors, pm && pm.vendors);
   }
-  fillKpis('sku', skuMetrics);
-  fillKpis('part', partMetrics);
+  var skuPrev = prevMonthLabel ? sumMetrics(skuRowsForKpi.filter(function (r) { return r[1] === prevMonthLabel; })) : null;
+  var partPrev = prevMonthLabel ? sumMetrics(partRowsForKpi.filter(function (r) { return r[1] === prevMonthLabel; })) : null;
+  fillKpis('sku', skuMetrics, skuPrev);
+  fillKpis('part', partMetrics, partPrev);
 
   // Chart 1: by DB (X-axis) - shadow bars stacked by Month, + a bold Total-per-DB line
   // (mirror image of the By Month chart: there X=month/stack=DB, here X=DB/stack=month)
@@ -1621,8 +1660,16 @@ function render() {
   var dbLabels = Object.keys(dbSumUsd).sort(function(a,b){ return dbSumUsd[b]-dbSumUsd[a]; });
   var monthsPresent = Array.from(new Set(rows.map(function (r) { return r[1]; }))).filter(Boolean).sort();
   var dbByMonthSum = groupSumTwoKeys(rows, 1, 0, 4); // { month: { db: sum } }
-  var MONTH_COLORS = ['#005daa', '#c0392b', '#27ae60', '#e67e22', '#8e44ad', '#16a085', '#d35400', '#7f8c8d'];
-  var DB_COLORS = ['#005daa', '#c0392b', '#27ae60', '#e67e22', '#8e44ad', '#16a085', '#d35400', '#7f8c8d'];
+  // McKinsey-style action titles (HTML above each canvas), recomputed per filter.
+  (function () {
+    var t = dbLabels.reduce(function (s, l) { return s + dbSumUsd[l]; }, 0);
+    var elDb = document.getElementById('at-db');
+    if (elDb) elDb.textContent = dbLabels.length ? dbLabels[0] + ' leads: ' + fmtUsd(dbSumUsd[dbLabels[0]]) + ' (' + (t ? (dbSumUsd[dbLabels[0]] / t * 100).toFixed(1) : '0.0') + '% of ' + fmtUsd(t) + ')' : '';
+    var elPie = document.getElementById('at-dbpie');
+    if (elPie) elPie.textContent = dbLabels.length + ' entit' + (dbLabels.length === 1 ? 'y' : 'ies') + ', ' + fmtUsd(t) + ' total';
+  })();
+  var MONTH_COLORS = ['#2251ff', '#051c2c', '#00a9f4', '#5b6b7c', '#afc3ff', '#2e86ab', '#9aa5b1', '#62b5e5'];
+  var DB_COLORS = ['#2251ff', '#051c2c', '#00a9f4', '#5b6b7c', '#afc3ff', '#2e86ab', '#9aa5b1', '#62b5e5'];
   // Fixed DB -> color mapping (by full DB_VALUES list, not by whatever subset happens
   // to be present after filtering, and not by a value-sorted order) so the same DB
   // always gets the same color across the DB pie, the timeline chart, and the Std
@@ -1665,7 +1712,7 @@ function render() {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        title: { display: true, text: 'By Entity (DB) - Total line + shadow bars per Month' },
+        title: { display: false },
         legend: { position: 'bottom' },
         tooltip: {
           callbacks: {
@@ -1697,7 +1744,7 @@ function render() {
     options: {
       responsive: true,
       plugins: {
-        title: { display: true, text: 'By Entity (DB) - %' },
+        title: { display: false },
         legend: { position: 'bottom' },
         tooltip: {
           callbacks: {
@@ -1785,6 +1832,16 @@ function render() {
   var monthLabels = Object.keys(monthSum).sort();
   var dbEntitiesPresent = Array.from(new Set(rows.map(function (r) { return r[0]; }))).filter(Boolean).sort();
   var monthByDbSum = groupSumTwoKeys(rows, 0, 1, 4); // { db: { month: sum } }
+  (function () {
+    var el = document.getElementById('at-timeline');
+    if (!el) return;
+    if (!monthLabels.length) { el.textContent = ''; return; }
+    var last = monthLabels[monthLabels.length - 1];
+    var prev = monthLabels.length > 1 ? monthLabels[monthLabels.length - 2] : null;
+    if (!prev || !monthSum[prev]) { el.textContent = fmtUsd(monthSum[last] || 0) + ' in ' + last; return; }
+    var pct = (monthSum[last] - monthSum[prev]) / monthSum[prev] * 100;
+    el.textContent = fmtUsd(monthSum[last]) + ' in ' + last + ' (' + (pct >= 0 ? '+' : '') + pct.toFixed(1) + '% vs ' + prev + ')';
+  })();
 
   var timelineDatasets = dbEntitiesPresent.map(function (db, i) {
     var byMonth = monthByDbSum[db] || {};
@@ -1821,7 +1878,7 @@ function render() {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        title: { display: true, text: 'By Month (Total line + shadow bars per Entity)' },
+        title: { display: false },
         legend: { position: 'bottom' },
         tooltip: {
           callbacks: {
@@ -1851,6 +1908,13 @@ function render() {
     scByDbSum[db][g] = (scByDbSum[db][g] || 0) + (typeof r[4] === 'number' ? r[4] : 0);
   });
   var scLabels = SC_GROUP_ORDER;
+  (function () {
+    var el = document.getElementById('at-stdcomm');
+    if (!el) return;
+    var t = 0;
+    scLabels.forEach(function (g) { t += scGroupSum[g] || 0; });
+    el.textContent = 'SKU- is ' + (t ? ((scGroupSum['SKU-'] || 0) / t * 100).toFixed(1) : '0.0') + '% of spend (' + fmtUsd(scGroupSum['SKU-'] || 0) + ')';
+  })();
 
   var scChartDatasets = dbEntitiesPresent.map(function (db, i) {
     var byGroup = scByDbSum[db] || {};
@@ -1887,7 +1951,7 @@ function render() {
       responsive: true,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        title: { display: true, text: 'By Std Comm (Group) - Total line + shadow bars per Entity' },
+        title: { display: false },
         legend: { position: 'bottom' },
         tooltip: {
           callbacks: {
@@ -1968,6 +2032,7 @@ function applyTheme(theme) {
   document.body.setAttribute('data-theme', theme);
   Chart.defaults.color = theme === 'dark' ? '#c8ccd4' : '#333333';
   Chart.defaults.borderColor = theme === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
+  Chart.defaults.font.family = "Arial, Helvetica, sans-serif";
 }
 
 document.getElementById('resetBtn').onclick = function () {
@@ -1989,6 +2054,39 @@ document.querySelectorAll('#stdCommDrilldown a').forEach(function (a) {
     }
   });
 });
+
+// Aggregate-only projection for the shell's AI assistant panel (per skill
+// qwen-assistant-static-html): totals and top-N lists under the CURRENT
+// filter, never raw rows. The shell calls this via the iframe's window.
+function gprAiContext() {
+  var rows = getFiltered();
+  function fmt(v) { return Math.round(v).toLocaleString('en-US'); }
+  var months = Array.from(new Set(rows.map(function (r) { return r[1]; }))).filter(Boolean).sort();
+  var byMonth = groupSum(rows, 1, 4);
+  var byDb = groupSum(rows, 0, 4);
+  var byComm = {};
+  rows.forEach(function (r) {
+    var g = stdCommGroup(r[2]);
+    byComm[g] = (byComm[g] || 0) + (typeof r[4] === 'number' ? r[4] : 0);
+  });
+  var byVendor = groupSum(rows, 8, 4);
+  var topV = Object.keys(byVendor).sort(function (a, b) { return byVendor[b] - byVendor[a]; }).slice(0, 10);
+  var total = 0, qty = 0;
+  rows.forEach(function (r) { total += (r[4] || 0); qty += (r[5] || 0); });
+  var last = months.length ? byMonth[months[months.length - 1]] : 0;
+  var prev = months.length > 1 ? byMonth[months[months.length - 2]] : 0;
+  var lines = [
+    'UI LANGUAGE: English (reply in English)',
+    'ACTIVE FILTERS: ' + JSON.stringify({ db: msDb.getSelected(), month: msMonth.getSelected(), stdComm: msStdComm.getSelected(), status: msStatus.getSelected(), vendor: msVendor.getSelected(), prodFami: msProdFami.getSelected() }),
+    'SUMMARY (under active filters): rows=' + rows.length + ', totalUsd=' + fmt(total) + ', receivedQty=' + fmt(qty) + ', lastVsPrevMonthPct=' + (prev ? (((last - prev) / prev) * 100).toFixed(1) : 'n/a'),
+    'DATA PERIOD (all data, unfiltered): ' + (MONTH_VALUES.length ? MONTH_VALUES[0] + ' to ' + MONTH_VALUES[MONTH_VALUES.length - 1] + ' (' + MONTH_VALUES.length + ' months)' : 'n/a'),
+    'BY_MONTH(USD): ' + months.map(function (m) { return m + ':' + fmt(byMonth[m]); }).join(', '),
+    'BY_ENTITY(USD): ' + Object.keys(byDb).sort(function (a, b) { return byDb[b] - byDb[a]; }).map(function (k) { return k + ':' + fmt(byDb[k]); }).join(', '),
+    'BY_COMM_GROUP(USD): ' + Object.keys(byComm).map(function (k) { return k + ':' + fmt(byComm[k]); }).join(', '),
+    'TOP_VENDOR(USD): ' + topV.map(function (v) { return v + ':' + fmt(byVendor[v]); }).join(', ')
+  ];
+  return lines.join('\n');
+}
 
 render();
 </script>
@@ -2044,27 +2142,52 @@ const combinedHtml = `<!doctype html>
 <meta charset="utf-8">
 <title>${reportTitle}</title>
 <style>
-  body { font-family: Calibri, Arial, sans-serif; margin: 0; padding: 0; }
-  #tabbar { display: flex; background: #005daa; align-items: stretch; }
+  body { font-family: Arial, Helvetica, sans-serif; margin: 0; padding: 0; }
+  #tabbar { display: flex; background: #051c2c; align-items: stretch; }
+  #brand { color: #ffffff; font-family: Georgia, 'Times New Roman', serif; font-size: 15px; font-weight: bold; padding: 10px 18px; white-space: nowrap; letter-spacing: 0.02em; align-self: center; }
   #tabs { display: flex; padding: 0; margin: 0; list-style: none; flex-wrap: wrap; flex: 1; }
-  #tabs button { background: #005daa; color: white; border: none; padding: 10px 16px; cursor: pointer; font-size: 14px; }
-  #tabs button.active { background: #1a3d6d; font-weight: bold; }
-  #tabs button:hover { background: #1a3d6d; }
-  #themeToggle { background: #1a3d6d; color: white; border: none; padding: 10px 16px; cursor: pointer; font-size: 13px; white-space: nowrap; }
-  #themeToggle:hover { background: #12294a; }
+  #tabs button { background: #051c2c; color: #b8c4d2; border: none; padding: 10px 16px; cursor: pointer; font-size: 14px; }
+  #tabs button.active { background: #051c2c; color: #ffffff; font-weight: bold; box-shadow: inset 0 -3px 0 #2251ff; }
+  #tabs button:hover { color: #ffffff; }
+  #themeToggle { background: #0e2f47; color: #ffffff; border: none; padding: 10px 16px; cursor: pointer; font-size: 13px; white-space: nowrap; }
+  #themeToggle:hover { background: #123a5c; }
   iframe { width: 100%; height: calc(100vh - 44px); border: none; display: block; }
 
-  #introOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  #introOverlay { position: fixed; inset: 0; background: rgba(5,28,44,0.6); display: flex; align-items: center; justify-content: center; z-index: 1000; }
   #introOverlay.hidden { display: none; }
-  #introModal { background: #ffffff; color: #222; border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); max-width: 560px; width: 90%; max-height: 85vh; overflow-y: auto; padding: 24px 28px; }
-  #introModal h2 { color: #005daa; margin: 0 0 4px 0; font-size: 20px; }
-  #introModal .intro-sub { color: #666; font-size: 13px; margin: 0 0 16px 0; }
+  #introModal { background: #ffffff; color: #1a1a1a; border-radius: 2px; box-shadow: 0 8px 30px rgba(0,0,0,0.3); max-width: 560px; width: 90%; max-height: 85vh; overflow-y: auto; padding: 24px 28px; border-top: 4px solid #051c2c; }
+  #introModal h2 { color: #051c2c; margin: 0 0 4px 0; font-size: 20px; font-family: Georgia, 'Times New Roman', serif; }
+  #introModal .intro-sub { color: #575757; font-size: 13px; margin: 0 0 16px 0; }
   #introModal ul { margin: 0 0 18px 0; padding-left: 20px; font-size: 14px; line-height: 1.7; }
   #introModal ul + p.intro-note { font-size: 12px; color: #777; margin: 0 0 18px 0; }
   #introFooter { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
   #introFooter label { font-size: 13px; color: #555; display: flex; align-items: center; gap: 6px; cursor: pointer; }
-  #introClose { background: #005daa; color: #fff; border: none; border-radius: 6px; padding: 9px 20px; font-size: 14px; cursor: pointer; }
-  #introClose:hover { background: #004a8c; }
+  #introClose { background: #051c2c; color: #fff; border: none; border-radius: 2px; padding: 9px 20px; font-size: 14px; cursor: pointer; }
+  #introClose:hover { background: #123a5c; }
+
+  /* 3D Earth shortcut + AI assistant (McKinsey navy, matching the tab bar) */
+  #earthLink, #aiToggle { background: #0e2f47; color: #fff; border: 0; padding: 10px 14px; cursor: pointer; font-size: 13px; text-decoration: none; white-space: nowrap; display: flex; align-items: center; }
+  #earthLink:hover, #aiToggle:hover { background: #123a5c; }
+  #aiToggle[aria-expanded="true"] { box-shadow: inset 0 -3px 0 #2251ff; }
+  #aiPanel { position: fixed; z-index: 900; right: 14px; top: 52px; width: min(420px, calc(100vw - 28px)); height: min(560px, calc(100vh - 68px)); display: none; flex-direction: column; background: #ffffff; color: #1a1a1a; border: 1px solid #d0d5dd; border-top: 4px solid #051c2c; box-shadow: 0 8px 30px rgba(5,28,44,0.25); font: 13px Arial, Helvetica, sans-serif; }
+  #aiPanel.open { display: flex; }
+  #aiPanel header { padding: 10px 12px; background: #051c2c; color: #fff; display: flex; justify-content: space-between; align-items: center; font-family: Georgia, 'Times New Roman', serif; font-size: 14px; }
+  #aiPanel header button { border: 0; background: transparent; color: #fff; font-size: 18px; cursor: pointer; line-height: 1; }
+  #aiStatus { padding: 6px 12px; font-size: 11px; color: #575757; border-bottom: 1px solid #e6e9ed; display: flex; gap: 8px; align-items: center; }
+  #aiStatus .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+  #aiStatus .dot.on { background: #0a7a3d; }
+  #aiStatus .dot.off { background: #c0392b; }
+  #aiLog { flex: 1; overflow: auto; padding: 12px; }
+  #aiLog p { margin: 0 0 8px; white-space: pre-wrap; line-height: 1.45; }
+  #aiLog .u { color: #051c2c; font-weight: bold; }
+  #aiLog .s { color: #575757; font-size: 11px; }
+  #aiForm { padding: 10px; display: flex; gap: 8px; border-top: 1px solid #e6e9ed; }
+  #aiInput { min-width: 0; flex: 1; padding: 8px; border: 1px solid #d0d5dd; font-size: 13px; }
+  #aiForm button { padding: 8px 12px; background: #051c2c; color: #fff; border: 0; cursor: pointer; }
+  #aiForm button:disabled { opacity: 0.5; cursor: default; }
+  #aiDisclosure { margin: 0; padding: 0 12px 8px; color: #575757; font-size: 10px; }
+  #aiUserBar { display: flex; gap: 6px; align-items: center; padding: 0 12px 10px; font-size: 11px; color: #575757; }
+  #aiUserBar input { width: 110px; padding: 3px 6px; border: 1px solid #d0d5dd; font-size: 11px; }
 </style>
 </head>
 <body>
@@ -2088,9 +2211,20 @@ const combinedHtml = `<!doctype html>
   </div>
 </div>
 <div id="tabbar">
+  <span id="brand">Global Purchase Report</span>
   <div id="tabs"></div>
+  <a id="earthLink" title="Open 3D Earth dashboard (requires the 3D dashboard file at the expected relative path)">🌍</a>
+  <button id="aiToggle" aria-expanded="false" title="AI assistant (local Qwen relay)">✨ AI</button>
   <button id="themeToggle">🌙 Dark Mode</button>
 </div>
+<aside id="aiPanel" aria-label="AI assistant">
+  <header><span>✨ AI Assistant · Qwen</span><button id="aiClose" aria-label="Close">×</button></header>
+  <div id="aiStatus"><i class="dot off"></i><span>Checking local AI relay…</span><span id="aiQuota"></span></div>
+  <div id="aiLog"></div>
+  <p id="aiDisclosure">Sends this report's summary aggregates to the local relay at 127.0.0.1:8765 only (shared with the 3D dashboard). No credentials inside this file; raw transaction rows are never sent. 只送出彙總數據，不送出明細。</p>
+  <form id="aiForm"><input id="aiInput" maxlength="4000" placeholder="Ask about this report… e.g. Which entity spent the most in 2026-09?" /><button id="aiSend" type="submit">Send</button></form>
+  <div id="aiUserBar"><span>User:</span><input id="aiUser" maxlength="40" /></div>
+</aside>
 <iframe id="sheetFrame" title="Report sheet"></iframe>
 <script>
 var SHEETS = ${sheetsJsonStr};
@@ -2163,6 +2297,133 @@ introCloseBtn.onclick = function () {
   }
   introOverlay.classList.add('hidden');
 };
+
+// ---- 3D Earth shortcut: opens the standalone 3D globe dashboard. The report
+// is a single self-contained file, so this is a relative link that only works
+// while the report sits at its usual place in REPORT\ (or wherever the two
+// files are kept side by side per this layout). It degrades silently - the
+// browser just shows its own "file not found" if the target moved.
+document.getElementById('earthLink').href = '../../../3D Earth Dashboard/Global_Purchase_3D_Earth_TEMP.html';
+
+// ---- AI assistant panel (skill qwen-assistant-static-html, shared-relay
+// variant): talks to the SAME loopback relay as the 3D dashboard / MPL_System
+// (http://127.0.0.1:8765). This file carries NO credential; with the relay
+// stopped the panel shows an offline state and the rest of the report is
+// untouched. History lives in memory only; model text is rendered with
+// textContent; only aggregate totals ever leave the machine. ----
+(function () {
+  var RELAY = 'http://127.0.0.1:8765';
+  var toggleBtn = document.getElementById('aiToggle');
+  var panel = document.getElementById('aiPanel');
+  var statusEl = document.getElementById('aiStatus');
+  var quotaEl = document.getElementById('aiQuota');
+  var logEl = document.getElementById('aiLog');
+  var inputEl = document.getElementById('aiInput');
+  var sendBtn = document.getElementById('aiSend');
+  var userEl = document.getElementById('aiUser');
+  var history = [];
+  var busy = false;
+  var aiUser = 'Anthony';
+  try { aiUser = localStorage.getItem('gpr-ai-user') || 'Anthony'; } catch (e) {}
+  userEl.value = aiUser;
+  userEl.addEventListener('change', function () {
+    aiUser = userEl.value.trim() || 'Anthony';
+    try { localStorage.setItem('gpr-ai-user', aiUser); } catch (e) {}
+  });
+
+  function setStatus(online, text) {
+    statusEl.innerHTML = '';
+    var dot = document.createElement('i');
+    dot.className = 'dot ' + (online ? 'on' : 'off');
+    var span = document.createElement('span');
+    span.textContent = text;
+    statusEl.appendChild(dot);
+    statusEl.appendChild(span);
+    statusEl.appendChild(quotaEl);
+    inputEl.disabled = !online || busy;
+    sendBtn.disabled = !online || busy;
+  }
+  function bubble(role, text) {
+    var p = document.createElement('p');
+    p.className = role === 'user' ? 'u' : (role === 'sys' ? 's' : 'b');
+    p.textContent = (role === 'user' ? 'You: ' : role === 'assistant' ? 'AI: ' : '') + text;
+    logEl.appendChild(p);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  function activeTabName() {
+    var idx = 0;
+    Array.prototype.forEach.call(tabsEl.children, function (btn, i) { if (btn.className === 'active') idx = i; });
+    return SHEETS[idx] ? SHEETS[idx].name : 'Unknown';
+  }
+  // Allowlisted aggregate projection. The per-sheet data lives inside the
+  // iframe; the Dashboard exposes gprAiContext() (aggregate totals only, no
+  // raw rows) which the shell pulls here. Falls back to tab name only when
+  // the frame is not reachable.
+  function buildContext() {
+    var lines = ['CURRENT APP: Global Purchase Report interactive HTML (monthly purchase report file, NOT the 3D dashboard). Answer about this purchase report only.'];
+    lines.push('CURRENT TAB: ' + activeTabName());
+    try {
+      var win = frameEl.contentWindow;
+      if (win && typeof win.gprAiContext === 'function') lines.push(win.gprAiContext());
+    } catch (e) {}
+    return lines.join('\n').slice(0, 5800);
+  }
+  function toggle(open) {
+    panel.classList.toggle('open', open);
+    toggleBtn.setAttribute('aria-expanded', String(open));
+    if (open) inputEl.focus();
+  }
+  toggleBtn.addEventListener('click', function () { toggle(!panel.classList.contains('open')); });
+  document.getElementById('aiClose').addEventListener('click', function () { toggle(false); toggleBtn.focus(); });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && panel.classList.contains('open')) { toggle(false); toggleBtn.focus(); }
+  });
+
+  fetch(RELAY + '/health', { signal: AbortSignal.timeout(2500) }).then(function (r) {
+    setStatus(r.ok, r.ok ? 'AI relay online · Qwen (local)' : 'AI relay unreachable');
+  }).catch(function () {
+    setStatus(false, 'AI offline - start the local relay (127.0.0.1:8765) to use the assistant');
+  });
+
+  document.getElementById('aiForm').addEventListener('submit', async function (event) {
+    event.preventDefault();
+    var message = inputEl.value.trim();
+    if (!message || busy) return;
+    inputEl.value = '';
+    bubble('user', message);
+    busy = true;
+    inputEl.disabled = true;
+    sendBtn.disabled = true;
+    bubble('sys', 'Thinking…');
+    try {
+      var response = await fetch(RELAY + '/chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        signal: AbortSignal.timeout(75000),
+        body: JSON.stringify({ username: aiUser, message: message, history: history, context: buildContext() })
+      });
+      var payload = await response.json().catch(function () { return null; });
+      logEl.lastChild.remove(); // drop the "Thinking…" line
+      if (!response.ok || !payload || payload.ok !== true) {
+        bubble('sys', '⚠ ' + ((payload && payload.error) || 'AI request failed (is the relay running?).'));
+      } else {
+        bubble('assistant', payload.reply + (payload.truncated ? '\n(Response shortened.)' : ''));
+        history.push({ role: 'user', content: message });
+        history.push({ role: 'assistant', content: String(payload.reply).slice(0, 2000) });
+        if (history.length > 24) history.splice(0, history.length - 24);
+        if (payload.quota) quotaEl.textContent = '· Monthly usage: ' + payload.quota.used + '/' + payload.quota.cap;
+        if (payload.warn) bubble('sys', '⚠ ' + payload.warn);
+      }
+    } catch (err) {
+      if (logEl.lastChild && logEl.lastChild.className === 's') logEl.lastChild.remove();
+      bubble('sys', '⚠ Network error - AI relay unreachable.');
+    }
+    busy = false;
+    inputEl.disabled = false;
+    sendBtn.disabled = false;
+    inputEl.focus();
+  });
+})();
 </script>
 </body>
 </html>`;
