@@ -71,7 +71,17 @@ The overlay self-invalidates when the snapshot is rebuilt with different totals.
 cd "C:\Users\User\Desktop\Global Purchase Report Claude\3D Earth Dashboard\build"
 node build.mjs            # → ../Global_Purchase_3D_WarRoom_TEMP.html
 node build.mjs 202610     #  additionally publishes ../Global_Purchase_3D_WarRoom_202610.html
+node build.mjs --hosted "C:\Users\User\GitHub-Clones\GPR-Web\public\earth\index.html"  # hosted Worker asset (English-only)
 ```
+
+The `--hosted` build loads report data from the GPR-Web Worker API and displays
+English only; the local TEMP and dated snapshots retain their Chinese/English
+language switch. Deploy the hosted asset from `C:\Users\User\GitHub-Clones\GPR-Web`
+with `npx wrangler deploy`.
+
+`--hosted` 版本會從 GPR-Web Worker API 載入報表資料，並只顯示英文；本機 TEMP
+和日期快照仍保留中英文切換。部署 hosted asset 時，請在
+`C:\Users\User\GitHub-Clones\GPR-Web` 執行 `npx wrangler deploy`。
 
 更新每月資料 = 替換 `build/data/report-seed.json`(同 20 欄格式,fields+rows 陣列),
 再跑上面指令。`build/` 內含全部原料:`src/`(移植後程式)、`vendor/`(three/echarts/字型/圖示)、
@@ -84,6 +94,12 @@ KPIs from the seed for cross-checking the page.
 
 - 2026-10-29(同日稍後):新增「中文/ENG」整屏語言切換,headless 雙語渲染驗證
   (英文模式下 KPI、訊號文案、表頭、分頁皆為英文;數字縮位 EN 用 M、ZH 用 億/萬)。
+- 2026-11-05: Hosted Worker Earth dashboard changed to English-only, with its
+  language toggle hidden; the local bilingual build is unchanged. Rebuilt and
+  deployed asset version `430e2f59-df98-4297-b5f6-3ee39c73c399` (live HTTP 200).
+
+- 2026-11-05: Hosted Worker Earth 看板已改為只顯示英文並隱藏語言切換；本機中英雙語版本不變。
+  已重新產生並部署 asset，版本 `430e2f59-df98-4297-b5f6-3ee39c73c399`（線上 HTTP 200）。
   同時補強地球模組生命週期:`visibilitychange` 顯式暫停、`webglcontextlost/restored`
   自動重建(長時間掛背景的電腦可能丟失 WebGL context)。
 - Headless Edge 1920×1080 實際渲染截圖:總採購額 $159.80M、MIL $54.81M (34.3%)、
