@@ -62,7 +62,7 @@ to install.
 | D1 | Two GitHub repos: **WEB** (dashboard shell + Worker code) and **DATA** (monthly purchase JSON) | Anthony |
 | D2 | Cloudflare (Worker + hosting) as the online home | Anthony |
 | D3 | **No passwords/logins.** Access control = the same philosophy as Drive: links emailed only to the 12 named recipients | Anthony |
-| D4 | Quota bounded by a hard cap instead of identity: **0.3M tokens per calendar month, per AI app** (web = its own 0.3M, counted from provider `usage`) | Anthony |
+| D4 | Quota bounded by a hard cap instead of identity: **5M tokens per calendar month, per AI app** (web = its own 5M, counted from provider `usage`) | Anthony |
 | D5 | Planning mix assumption for budgeting: 20% input / 80% output (conservative; web reality is ~82% input, cheaper) | Anthony |
 | D6 | Model pinned to **qwen3.8-flash** for all AIs | Anthony |
 
@@ -73,7 +73,7 @@ to install.
 | B1 | One Cloudflare **Worker with static assets** serves the shell, `/api/health`, `/api/chat`, and the data JSON from a **same origin** (single subdomain; no custom domain) | Same-origin kills CORS entirely and lets one token-cookie gate all routes; cookie issues across pages.dev↔workers.dev avoided |
 | B2 | Data flows: PS rebuild additionally emits `gpr-data-<period>.json` → `wrangler kv key put` (atomic swap) → Worker serves current key. DATA repo keeps the JSON as source of truth/version history | KV read per request is free-tier-safe (100k reads/day); git push alone can't reach Cloudflare without a deploy; KV = one-command monthly update |
 | B3 | The "unguessable" part: a **random path segment per recipient cohort** (e.g. `/r/<32-hex>/`) issued at email time; Worker maps segment → viewer bucket, serves shell+data+chat only under a known segment. Unknown segment → 404, no fingerprint of existence | Anthony declined real auth; obscurity+caps is the agreed lock; per-cohort segments let one person's leak be revoked by deleting one mapping line (revoke = that cohort gets 404s, others unaffected) — this restores per-recipient blocking for free |
-| B4 | Quota counters in **KV** keyed `quota:<month>:gpr-web`, cap 0.3M tokens; warn ≥80% in-panel; fail closed at 100%; per-bucket min-interval between messages; upstream 401/429 → "used up until renewal" message | Same semantics as the loopback relay, so both variants behave identically |
+| B4 | Quota counters in the strongly consistent **Durable Object** keyed `quota:<month>:gpr-web`, cap 5M tokens; warn ≥80% in-panel; fail closed at 100%; per-bucket min-interval between messages; upstream 401/429 → "used up until renewal" message | Same semantics as the loopback relay, so both variants behave identically |
 | B5 | One HTML source tree; build stamps `RELAY`: file:// variant → `http://127.0.0.1:8765`; web variant → `/api`. Panel code otherwise unchanged (already allowlisted context, `textContent`, in-memory history) | The panel was designed for exactly this swap |
 | B6 | Repos: WEB and DATA **private**; DATA contains real vendor names/amounts | Matches Drive-copy exposure, not more |
 | B7 | Worker secret via `wrangler secret put QWEN_TOKEN` from the (off-Desktop) clone; token value never printed, never logged by Worker (metadata-only logs) | Skill rule |
