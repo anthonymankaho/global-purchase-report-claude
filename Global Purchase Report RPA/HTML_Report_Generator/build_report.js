@@ -2085,7 +2085,7 @@ function gprAiContext() {
     'BY_COMM_GROUP(USD): ' + Object.keys(byComm).map(function (k) { return k + ':' + fmt(byComm[k]); }).join(', '),
     'TOP_VENDOR(USD): ' + topV.map(function (v) { return v + ':' + fmt(byVendor[v]); }).join(', ')
   ];
-  return lines.join('\n');
+  return lines.join('\\n');
 }
 
 render();
