@@ -93,7 +93,7 @@ $htmlIntroParagraph = ""
 if ($IncludeHtmlIntro) {
     $htmlIntroParagraph = @"
 
-<p><b>New:</b> This report is now also available as an interactive web (HTML) version - once you receive the file, simply open it in your web browser (double-click it, or drag it into Chrome/Edge) to sort, filter and search the data interactively, no Excel required.</p>
+<p><b>New:</b> This report is also available as an interactive web version (browser dashboard + AI assistant). If you cannot download or open an HTML attachment, ask Anthony Man for the private online link instead of opening a local file. You can still open a received HTML file in Chrome/Edge to sort, filter and search offline.</p>
 "@
 }
 

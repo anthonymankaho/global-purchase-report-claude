@@ -1,5 +1,9 @@
 # MEYERGPR: Public Dashboard Mirror for Global Purchase Report
 
+> **Superseded (2026-11):** The online report was implemented as private Cloudflare Worker **`gpr-web`** (`https://gpr-web.anthonym-354.workers.dev/`, cohort-gated `/r/<segment>/` links + AI assistant) instead of a public `MEYERGPR` GitHub Pages mirror. The `MEYERGPR` repo was never created. Keep this spec only as historical design notes.
+>
+> **已取代（2026-11）：** 線上報表改以私有 Cloudflare Worker **`gpr-web`**（`https://gpr-web.anthonym-354.workers.dev/`，cohort 路徑 `/r/<segment>/`＋AI 助理）實作，而非公開的 `MEYERGPR` GitHub Pages。`MEYERGPR` repo 從未建立。本規格僅作歷史設計紀錄。
+
 ## Summary / 摘要
 
 Joe (senior management) can't open the monthly interactive HTML report as an email/Slack attachment — his client shows no download option. The fix: publish the finalized monthly HTML report to a **new, separate, public GitHub repository** (`anthonymankaho/MEYERGPR`) via GitHub Pages, so recipients open it as a browser link instead of a file attachment. A lightweight client-side login screen gates casual/accidental viewing (not determined attackers — see Non-Goals).

@@ -122,7 +122,7 @@ Write-Host "HTML intro   : $(if ($IncludeHtmlIntro) { 'included' } else { 'omitt
 
 $htmlIntroLine = ""
 if ($IncludeHtmlIntro) {
-    $htmlIntroLine = "`n*New:* this report is now shared as an interactive web (HTML) file - download the attachment below and open it in your web browser (double-click it, or drag it into Chrome/Edge) to sort, filter and search the data interactively, no Excel required.`n"
+    $htmlIntroLine = "`n*New:* interactive web version is available (browser dashboard + AI). If you cannot download the HTML attachment, ask Anthony Man for the private online link. Otherwise download the file below and open it in Chrome/Edge for offline sorting/filtering.`n"
 }
 
 $text = @"
