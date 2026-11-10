@@ -16,13 +16,13 @@ The production online report (real purchase data + working AI assistant for reci
 | | |
 |---|---|
 | Worker | `gpr-web` |
-| Base URL | https://gpr-web.anthonym-354.workers.dev/ |
-| Access | Private cohort links only (`/r/<segment>/…`). Root and unknown paths return **404**. |
+| Base URL | https://gpr-web.anthonym-354.workers.dev/r/4354d1e16df556aa984ba6107fb90f53/ |
+| Access | The cohort URL above is published in this README and available to its readers. Root and unknown paths return **404**. |
 | Active data (KV) | Period **202609** → `gpr-data-202609-v2.json` |
 | Source repos | Private `GPR-Web` (shell + Worker) and `GPR-Data` (monthly JSON) |
 | Public demo (no real data) | https://anthonymankaho.github.io/global-purchase-report-claude/ |
 
-Do **not** put cohort path segments, access codes, or `QWEN_TOKEN` in this repo, emails, or git history. Issue or revoke recipient links only via the Worker secrets (`COHORT_MAP` / related), off-Desktop from the `GPR-Web` clone.
+The cohort URL above is the owner-approved published entry point. Treat it as a public access link: do **not** add other cohort path segments, access codes, or `QWEN_TOKEN` to this repo, emails, or git history. Issue or revoke recipient links only via the Worker secrets (`COHORT_MAP` / related), off-Desktop from the `GPR-Web` clone.
 
 ---
 
@@ -186,7 +186,7 @@ Global Purchase Report Claude/
 | AA/AB 改為全程人工處理（2026-08-04）| ✅ 已完成：`Build-GlobalPurchaseReport.ps1` 不再碰 AA/AB 及依賴欄位；新增 `Complete-FormulaColumns.ps1`，人工填好 AA/AB 後執行，自動檢查沒填會報錯中止，避免重演 key 不同步 #N/A 問題 |
 | 月初資料索取自動化（2026-09-08） | ✅ 已完成：`New-InterGroupPurchaseDataRequestDrafts.ps1`，向 MZQ/MIL/RACO/TVS/MAZ 建立 5 封多語言 Gmail 草稿索取當月採購資料，`-ReportMonth` 自動往前推一個月 |
 | 3D 地球儀互動看板（2026-10-29；2026-10-29 改名，去除「戰情室」字樣，正式名稱「全球採購報告 / Global Purchase Report」） | ✅ 已完成並端對端驗證：`3D Earth Dashboard\Global_Purchase_3D_WarRoom_TEMP.html`（約 14.4 MB 單一自包含 HTML，three.js 3D 地球＋KPI＋實體/品類/供應商下鑽＋明細/CSV＋**「中文/ENG」整屏語言切換**）。內嵌 2026-01～09 共 56,370 列，已與主報表獨立驗算對帳一致（$159.80M、6 月 6,816 列、8 月 6,298 列全對）。由 AI app-builder 的 React+MySQL 模板移植而來，無需安裝任何東西；狀態修訂僅存瀏覽器 localStorage，不回寫 Excel。語言偏好存 localStorage，`?lang=en`/`?lang=zh` 可直啟對應語言（也供無頭驗證）。每月重建方式見 `3D Earth Dashboard\README.md`；3D 地球技術已沉澱為個人 skill `globe-engine`（已推送 GitHub Skills + MyVault 個人 OS）。2026-10-30 加「AI 助理」面板（依 skill `qwen-assistant-static-html`）：僅連本機 127.0.0.1:8765 共用 MPL 的 Qwen 中繼、HTML 內零憑證、只送彙總不送明細、AI 建議篩選需人工按「套用」、同事沒開中繼時面板自動顯示離線；詳見該資料夾 README |
-| 線上報表取代 MEYERGPR／附件開啟路徑（2026-11-07） | ✅ 文件與公開 landing 改以 Cloudflare Worker `gpr-web`（`https://gpr-web.anthonym-354.workers.dev/`，cohort 路徑、資料期 202609）為正式線上版；`MEYERGPR` Pages 方案標為已取代；GitHub Pages 僅保留合成 demo；Email/Slack 介紹文改為無法下載附件時向 Anthony 索取私密 online link。Online report docs now treat `gpr-web` as the replacement for the abandoned `MEYERGPR` Pages plan and for recipients who cannot open HTML attachments. |
+| 線上報表取代 MEYERGPR／附件開啟路徑（2026-11-07） | ✅ 文件與公開 landing 改以 Cloudflare Worker `gpr-web`（正式 cohort URL 見上方，資料期 202609）為正式線上版；`MEYERGPR` Pages 方案標為已取代；GitHub Pages 僅保留合成 demo；Email/Slack 介紹文改為無法下載附件時向 Anthony 索取私密 online link。Online report docs now treat `gpr-web` as the replacement for the abandoned `MEYERGPR` Pages plan and for recipients who cannot open HTML attachments. |
 
 ---
 
